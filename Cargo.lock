@@ -79,7 +79,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tournament-viewer"
+name = "tournament-tracker"
 version = "0.1.0"
 dependencies = [
  "console_log",
