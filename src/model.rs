@@ -85,14 +85,25 @@ impl Model {
         }
     }
 
+    pub fn delete_team(&mut self, tournament_id: TournamentId, stage_id: StageId, team_id: TeamId) -> Result<(), ()> {
+        if let Some(s) = self.tournaments.get_mut(&tournament_id).and_then(|t| t.stages.get_mut(&stage_id)) {
+            //TODO: also remove any matches etc.
+            if s.teams.shift_remove(&team_id).is_none() {
+                return Err(());
+            }
+            self.changed_tournaments.push(tournament_id);
+            Ok(())
+        } else {
+            Err(())
+        }
+    }
+
     /// We can't easily notify subscribers about changes to the model during the change itself,
     /// as that would require passing round lots of mutable references which Rust doesn't like.
     /// Instead we batch them up and handle them all "at the end".
     pub fn process_updates(&mut self, ui: &mut Ui) {
         for t in &self.changed_tournaments {
-            for (_, r) in ui.get_elements() {
-                r.tournament_changed(self, *t);
-            }
+           ui.tournament_changed(self, *t);
         }
         if !self.changed_tournaments.is_empty() {
             self.save();

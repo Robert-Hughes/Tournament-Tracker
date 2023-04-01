@@ -23,7 +23,7 @@ pub trait UiElement : Any {
     fn as_round_robin_table(&self) -> Option<&RoundRobinTable> { None }
     fn as_round_robin_standings(&self) -> Option<&RoundRobinStandings> { None }
 
-    fn tournament_changed(&self, model: &Model, tournament_id: TournamentId);
+    fn tournament_changed(&mut self, model: &Model, tournament_id: TournamentId);
 }
 
 impl Ui {
@@ -44,11 +44,22 @@ impl Ui {
     pub fn get_element(&self, id: UiElementId) -> Option<&Box<dyn UiElement>> {
         self.elements.get(&id)
     }
+    pub fn get_element_mut(&mut self, id: UiElementId) -> Option<&mut Box<dyn UiElement>> {
+        self.elements.get_mut(&id)
+    }
+
 
     pub fn add_element(&mut self, element: Box<dyn UiElement>) {
         self.elements.insert(element.get_id(), element);
     }
 
+    pub fn tournament_changed(&mut self, model: &Model, tournament_id: TournamentId) {
+        let ids: Vec<usize> = self.elements.keys().map(|k| *k).collect();
+
+        for id in ids {
+            self.get_element_mut(id).unwrap().tournament_changed(model, tournament_id);
+        }
+    }
 }
 
 /// Creates a wasm-bindgen Closure which can be called from Javascript, for use in event callbacks

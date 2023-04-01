@@ -1,7 +1,8 @@
+use log::error;
 use wasm_bindgen::{JsCast, prelude::Closure};
-use web_sys::{HtmlTableElement, HtmlTableRowElement, HtmlInputElement, HtmlElement, HtmlTableSectionElement};
+use web_sys::{HtmlTableElement, HtmlTableRowElement, HtmlInputElement, HtmlElement, HtmlTableSectionElement, HtmlButtonElement, window};
 
-use crate::{dom::{create_element, create_html_element}, tournament::{StageId, TournamentId}, model::Model, ui::{create_callback, UiElementId, UiElement}};
+use crate::{dom::{create_element, create_html_element}, tournament::{StageId, TournamentId, TeamId}, model::Model, ui::{create_callback, UiElementId, UiElement}};
 
 pub struct RoundRobinStandings {
     id: UiElementId,
@@ -23,7 +24,7 @@ impl UiElement for RoundRobinStandings {
 
     fn as_round_robin_standings(&self) -> Option<&RoundRobinStandings> { Some(self) }
 
-    fn tournament_changed(&self, model: &Model, tournament_id: TournamentId) {
+    fn tournament_changed(&mut self, model: &Model, tournament_id: TournamentId) {
         if tournament_id == self.tournament_id {
             self.refresh(model);
         }
@@ -75,26 +76,43 @@ impl RoundRobinStandings {
         result
     }
 
-    fn refresh(&self, model: &Model) {
+    fn refresh(&mut self, model: &Model) {
         while self.body.rows().length() > 0 {
             self.body.delete_row(0).expect("Failed to delete row");
+            //TODO: also delete delete button click closures?
         }
         while self.head_row.cells().length() > 1 {
             self.head_row.delete_cell(1).expect("Failed to delete cell");
         }
 
         if let Some(stage) = model.get_stage(self.tournament_id, self.stage_id) {
-            for (_team_id, team) in &stage.teams {
-                self.add_team_elements(&team.name);
+            for (team_id, team) in &stage.teams {
+                self.add_team_elements(*team_id, &team.name);
             }
         }
     }
 
-    fn add_team_elements(&self, name: &str) {
+    fn add_team_elements(&mut self, team_id: TeamId, team_name: &str) {
         // Add row at the end
         let new_row: HtmlTableRowElement = self.body.insert_row().expect("Failed to insert row").dyn_into().expect("Cast failed");
+
         let cell = new_row.insert_cell().expect("Failed to insert cell");
-        cell.set_inner_text(&name);
+        let delete_button: HtmlButtonElement = create_element("button");
+        delete_button.set_inner_text("X");
+        cell.append_child(&delete_button).expect("Failed to append button");
+        let id = self.id;
+        let team_name2 = team_name.to_string();
+        let click_closure = create_callback(move |model, ui| {
+            if let Some(this) = ui.get_element(id).and_then(|u| u.as_round_robin_standings()) {
+                this.on_delete_team_button_click(model, team_id, &team_name2);
+            }
+        });
+        delete_button.set_onclick(Some(click_closure.as_ref().unchecked_ref()));
+        self.closures.push(click_closure); // Needs to be kept alive
+
+
+        let cell = new_row.insert_cell().expect("Failed to insert cell");
+        cell.set_inner_text(&team_name);
 
         let cell = new_row.insert_cell().expect("Failed to insert cell");
         cell.set_inner_text("0 - 0");
@@ -104,4 +122,13 @@ impl RoundRobinStandings {
         model.add_team(self.tournament_id, self.stage_id, self.new_team_name_input.value());
        // self.add_team_elements(&self.new_team_name_input.value());
     }
+
+    fn on_delete_team_button_click(&self, model: &mut Model, team_id: TeamId, team_name: &str) {
+        if window().unwrap().confirm_with_message(&format!("Are you sure you want to delete team '{team_name}'? All data for this team will be lost!!")) == Ok(true) {
+            if let Err(_) = model.delete_team(self.tournament_id, self.stage_id, team_id) {
+                error!("Failed to delete team");
+            }
+        }
+    }
+
 }

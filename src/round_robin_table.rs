@@ -20,7 +20,7 @@ impl UiElement for RoundRobinTable {
 
     fn as_round_robin_table(&self) -> Option<&RoundRobinTable> { Some(self) }
 
-    fn tournament_changed(&self, model: &Model, tournament_id: TournamentId) {
+    fn tournament_changed(&mut self, model: &Model, tournament_id: TournamentId) {
         if tournament_id == self.tournament_id {
             self.refresh(model);
         }
