@@ -2,7 +2,7 @@ use log::error;
 use wasm_bindgen::{JsCast, prelude::Closure};
 use web_sys::{HtmlTableElement, HtmlTableRowElement, HtmlInputElement, HtmlElement, HtmlTableSectionElement, HtmlButtonElement, window};
 
-use crate::{dom::{create_element, create_html_element}, tournament::{StageId, TournamentId, TeamId}, model::Model, ui::{create_callback, UiElementId, UiElement}};
+use crate::{dom::{create_element, create_html_element}, tournament::{StageId, TournamentId, TeamId, Stage}, model::Model, ui::{create_callback, UiElementId, UiElement}};
 
 pub struct RoundRobinStandings {
     id: UiElementId,
@@ -87,12 +87,12 @@ impl RoundRobinStandings {
 
         if let Some(stage) = model.get_stage(self.tournament_id, self.stage_id) {
             for (team_id, team) in &stage.teams {
-                self.add_team_elements(*team_id, &team.name);
+                self.add_team_elements(*team_id, &team.name, stage);
             }
         }
     }
 
-    fn add_team_elements(&mut self, team_id: TeamId, team_name: &str) {
+    fn add_team_elements(&mut self, team_id: TeamId, team_name: &str, stage: &Stage) {
         // Add row at the end
         let new_row: HtmlTableRowElement = self.body.insert_row().expect("Failed to insert row").dyn_into().expect("Cast failed");
 
@@ -115,7 +115,9 @@ impl RoundRobinStandings {
         cell.set_inner_text(&team_name);
 
         let cell = new_row.insert_cell().expect("Failed to insert cell");
-        cell.set_inner_text("0 - 0");
+        let w = stage.matches.values().filter(|m| m.winner == team_id).count();
+        let l = stage.matches.values().filter(|m| m.loser == team_id).count();
+        cell.set_inner_text(&format!("{w} - {l}"));
     }
 
     fn on_add_team_button_click(&self, model: &mut Model) {

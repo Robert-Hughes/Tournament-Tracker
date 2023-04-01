@@ -48,12 +48,12 @@ fn main() {
             None => model.add_stage(tournament_id, "Group Stage".to_string()).unwrap(),
         };
 
-        let table = Box::new(RoundRobinTable::new(ui.get_next_id(), model, tournament_id, stage_id));
-        window().expect("Missing window").document().expect("Missing document").body().expect("Missing body").append_child(&table.get_dom_table()).expect("Failed to insert table");
-        ui.add_element(table);
-
         let standings = Box::new(RoundRobinStandings::new(ui.get_next_id(), model, tournament_id, stage_id));
         window().expect("Missing window").document().expect("Missing document").body().expect("Missing body").append_child(&standings.get_dom_table()).expect("Failed to insert table");
         ui.add_element(standings);
+
+        let table = Box::new(RoundRobinTable::new(ui.get_next_id(), model, tournament_id, stage_id));
+        window().expect("Missing window").document().expect("Missing document").body().expect("Missing body").append_child(&table.get_dom_table()).expect("Failed to insert table");
+        ui.add_element(table);
     });
 }

@@ -6,6 +6,8 @@ use serde::Deserialize;
 use serde::Serialize;
 use web_sys::window;
 
+use crate::tournament::Match;
+use crate::tournament::MatchId;
 use crate::tournament::Team;
 use crate::ui::Ui;
 use crate::{tournament::{TournamentId, Tournament, StageId, Stage, TeamId}};
@@ -34,7 +36,11 @@ impl Model {
             }
         }
 
-        Model { tournaments: indexmap!{}, next_id: 0, changed_tournaments: vec![] }
+        if window().unwrap().confirm_with_message(&format!("Failed to load data! If this is expected then click OK and it will be reset. Otherwise check what's going on.")) == Ok(true) {
+            return Model { tournaments: indexmap!{}, next_id: 0, changed_tournaments: vec![] }
+        }
+
+        panic!("No data!");
     }
 
     pub fn get_next_id(&mut self) -> usize {
@@ -87,8 +93,38 @@ impl Model {
 
     pub fn delete_team(&mut self, tournament_id: TournamentId, stage_id: StageId, team_id: TeamId) -> Result<(), ()> {
         if let Some(s) = self.tournaments.get_mut(&tournament_id).and_then(|t| t.stages.get_mut(&stage_id)) {
-            //TODO: also remove any matches etc.
+            // Remove any matches this team was in
+            s.matches.retain(|_, m| !m.teams.contains(&team_id));
+
             if s.teams.shift_remove(&team_id).is_none() {
+                return Err(());
+            }
+            self.changed_tournaments.push(tournament_id);
+            Ok(())
+        } else {
+            Err(())
+        }
+    }
+
+    pub fn add_match(&mut self, tournament_id: TournamentId, stage_id: StageId, team_a: TeamId, team_b: TeamId, winner: TeamId) -> Option<MatchId> {
+        let id = self.get_next_id();
+        if let Some(s) = self.tournaments.get_mut(&tournament_id).and_then(|t| t.stages.get_mut(&stage_id)) {
+            if !s.teams.contains_key(&team_a) || !s.teams.contains_key(&team_b) {
+                return None;
+            }
+
+            if let Some(m) = Match::new(id, team_a, team_b, winner) {
+                s.matches.insert(id, m);
+                self.changed_tournaments.push(tournament_id);
+                return Some(id)
+            }
+        }
+        return None;
+    }
+
+    pub fn delete_match(&mut self, tournament_id: TournamentId, stage_id: StageId, match_id: MatchId) -> Result<(), ()> {
+        if let Some(s) = self.tournaments.get_mut(&tournament_id).and_then(|t| t.stages.get_mut(&stage_id)) {
+            if s.matches.shift_remove(&match_id).is_none() {
                 return Err(());
             }
             self.changed_tournaments.push(tournament_id);
