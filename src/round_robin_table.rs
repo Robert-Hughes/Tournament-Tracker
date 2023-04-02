@@ -5,6 +5,8 @@ use web_sys::{HtmlTableElement, HtmlTableRowElement, HtmlTableSectionElement};
 
 use crate::{dom::{create_element}, tournament::{StageId, TournamentId, Team, Match, TeamId}, model::Model, ui::{UiElement, UiElementId, create_callback}};
 
+//TODO: highlight column and row on mouse over? Or altnerate shading to make rows/cols easier to follow
+
 pub struct RoundRobinTable {
     id: UiElementId,
     tournament_id: TournamentId,
@@ -89,7 +91,7 @@ impl RoundRobinTable {
             if let Some((_, m)) = matches.iter().find(|(_, m)| m.is_between(team.id, other_team_id)) {
                 cell.set_inner_text(if m.winner == team.id { "W" } else { "L" });
             } else {
-                cell.set_inner_text("-");
+                cell.set_inner_text("-"); //TODO: make the diagonal distinguished from other matches not yet played (as these can never be played!)
             }
 
             let id = self.id;
@@ -125,11 +127,6 @@ impl RoundRobinTable {
             } else {
                 model.add_match(self.tournament_id, self.stage_id, team_id, other_team_id, team_id);
             }
-
-
-            // web_sys::window().unwrap().alert_with_message(&format!("{} vs {}",
-            // stage.teams.get(&team_id).map(|t| &t.name[..]).unwrap_or("?"),
-            // stage.teams.get(&other_team_id).map(|t| &t.name[..]).unwrap_or("?"))).unwrap();
         }
     }
 }

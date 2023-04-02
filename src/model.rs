@@ -134,6 +134,19 @@ impl Model {
         }
     }
 
+    pub fn reorder_match(&mut self, tournament_id: TournamentId, stage_id: StageId, match_id: MatchId, new_idx: usize) -> Result<(), ()> {
+        if let Some(s) = self.tournaments.get_mut(&tournament_id).and_then(|t| t.stages.get_mut(&stage_id)) {
+            if let Some(old_idx) = s.matches.get_index_of(&match_id) {
+                let new_idx = std::cmp::min(new_idx, s.matches.len() - 1);
+                s.matches.move_index(old_idx, new_idx);
+            }
+            self.changed_tournaments.push(tournament_id);
+            Ok(())
+        } else {
+            Err(())
+        }
+    }
+
     /// We can't easily notify subscribers about changes to the model during the change itself,
     /// as that would require passing round lots of mutable references which Rust doesn't like.
     /// Instead we batch them up and handle them all "at the end".

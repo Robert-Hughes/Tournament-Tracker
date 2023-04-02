@@ -1,6 +1,9 @@
 use std::{cell::RefCell, ops::DerefMut};
 
+use dom::create_html_element;
+use match_list::MatchList;
 use model::Model;
+use outline::Outline;
 use round_robin_standings::RoundRobinStandings;
 use round_robin_table::RoundRobinTable;
 use ui::Ui;
@@ -10,8 +13,16 @@ mod tournament;
 mod dom;
 mod round_robin_table;
 mod round_robin_standings;
+mod match_list;
+mod outline;
 mod model;
 mod ui;
+
+//TODO: maybe have a read-only lock toggle, for entering match results vs. viewing stats etc.
+//TODO: "what-if" mode where can enter potential future results to see what happens,
+//  e.g. percentages of playoffs without permanently changing the already-completed matches
+//TODO: round-robin diagram with arrows (like I draw on paint), useful for smaller groups e.g. 4
+//TODO: import data from lolesports or lol wiki?
 
 // We use some global state as callbacks from the Javascript world (e.g. click event handlers)
 // will need the Model (for example), but we can't easily store a reference in the callback closure
@@ -48,12 +59,26 @@ fn main() {
             None => model.add_stage(tournament_id, "Group Stage".to_string()).unwrap(),
         };
 
+        let outline = Box::new(Outline::new(ui.get_next_id(), model));
+        window().expect("Missing window").document().expect("Missing document").body().expect("Missing body").append_child(&outline.get_div()).expect("Failed to add div");
+        ui.add_element(outline);
+
+        window().expect("Missing window").document().expect("Missing document").body().expect("Missing body").append_child(&create_html_element("hr")).expect("Failed to add element");
+
         let standings = Box::new(RoundRobinStandings::new(ui.get_next_id(), model, tournament_id, stage_id));
         window().expect("Missing window").document().expect("Missing document").body().expect("Missing body").append_child(&standings.get_dom_table()).expect("Failed to insert table");
         ui.add_element(standings);
 
+        window().expect("Missing window").document().expect("Missing document").body().expect("Missing body").append_child(&create_html_element("hr")).expect("Failed to add element");
+
         let table = Box::new(RoundRobinTable::new(ui.get_next_id(), model, tournament_id, stage_id));
         window().expect("Missing window").document().expect("Missing document").body().expect("Missing body").append_child(&table.get_dom_table()).expect("Failed to insert table");
         ui.add_element(table);
+
+        window().expect("Missing window").document().expect("Missing document").body().expect("Missing body").append_child(&create_html_element("hr")).expect("Failed to add element");
+
+        let match_list = Box::new(MatchList::new(ui.get_next_id(), model, tournament_id, stage_id));
+        window().expect("Missing window").document().expect("Missing document").body().expect("Missing body").append_child(&match_list.get_dom_table()).expect("Failed to insert table");
+        ui.add_element(match_list);
     });
 }

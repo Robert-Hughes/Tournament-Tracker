@@ -4,7 +4,9 @@ use indexmap::IndexMap;
 use indexmap::indexmap;
 use wasm_bindgen::prelude::Closure;
 
+use crate::match_list::MatchList;
 use crate::model::Model;
+use crate::outline::Outline;
 use crate::round_robin_standings::RoundRobinStandings;
 use crate::with_globals;
 use crate::{tournament::{TournamentId}, round_robin_table::RoundRobinTable};
@@ -22,6 +24,8 @@ pub trait UiElement : Any {
 
     fn as_round_robin_table(&self) -> Option<&RoundRobinTable> { None }
     fn as_round_robin_standings(&self) -> Option<&RoundRobinStandings> { None }
+    fn as_match_list(&self) -> Option<&MatchList> { None }
+    fn as_outline(&self) -> Option<&Outline> { None }
 
     fn tournament_changed(&mut self, model: &Model, tournament_id: TournamentId);
 }
