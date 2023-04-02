@@ -74,6 +74,7 @@ impl Outline {
 
     fn refresh(&mut self, model: &Model) {
         while self.select.options().length() > 0 {
+            //TODO: also delete optgroups!
             self.select.options().remove(0).expect("Failed to delete option");
             //TODO: also delete delete button click closures?
         }

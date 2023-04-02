@@ -4,6 +4,9 @@ use web_sys::{HtmlTableElement, HtmlTableRowElement, HtmlInputElement, HtmlEleme
 
 use crate::{dom::{create_element, create_html_element}, tournament::{StageId, TournamentId, TeamId, Stage}, model::Model, ui::{create_callback, UiElementId, UiElement}};
 
+
+//TODO: show total games played too
+
 pub struct RoundRobinStandings {
     id: UiElementId,
     tournament_id: TournamentId,
