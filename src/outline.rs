@@ -1,4 +1,4 @@
-use log::error;
+use log::{error, debug};
 use wasm_bindgen::{JsCast, prelude::Closure};
 use web_sys::{HtmlTableElement, HtmlTableRowElement, HtmlInputElement, HtmlElement, HtmlTableSectionElement, HtmlButtonElement, window, HtmlSelectElement, HtmlDivElement, HtmlOptGroupElement, HtmlOptionElement};
 
@@ -6,12 +6,18 @@ use crate::{dom::{create_element, create_html_element}, tournament::{StageId, To
 
 //TODO: reorder tournaments and stages
 //TODO: rename tournaments and stages
+//TODO: delete tournaments and stages
 
 pub struct Outline {
     id: UiElementId,
 
     div: HtmlDivElement,
     select: HtmlSelectElement,
+    new_tournament_name_input: HtmlInputElement,
+    new_stage_name_input: HtmlInputElement,
+
+    selected_tournament_id: Option<TournamentId>,
+    selected_stage_id: Option<StageId>,
 
     closures: Vec<Closure::<dyn FnMut()>>,
 }
@@ -56,16 +62,32 @@ impl Outline {
         add_stage_button.set_inner_text("Add stage");
         div.append_child(&add_stage_button).expect("Failed to append child");
 
-        let mut result = Outline { id, div, select, closures: vec![] };
+        let mut result = Outline { id, div, select, new_tournament_name_input, new_stage_name_input, selected_tournament_id: None, selected_stage_id: None, closures: vec![] };
 
-        // let click_closure = create_callback(move |model, ui| {
-        //     if let Some(this) = ui.get_element(id).and_then(|u| u.as_round_robin_standings()) {
-        //         this.on_add_team_button_click(model);
-        //     }
-        // });
-        // add_team_button.set_onclick(Some(click_closure.as_ref().unchecked_ref()));
+        let click_closure = create_callback(move |model, ui| {
+            if let Some(this) = ui.get_element(id).and_then(|u| u.as_outline()) {
+                this.on_add_tournament_button_click(model);
+            }
+        });
+        add_tournament_button.set_onclick(Some(click_closure.as_ref().unchecked_ref()));
+        result.closures.push(click_closure); // Needs to be kept alive
 
-        // result.closures.push(click_closure); // Needs to be kept alive
+        let click_closure = create_callback(move |model, ui| {
+            if let Some(this) = ui.get_element(id).and_then(|u| u.as_outline()) {
+                this.on_add_stage_button_click(model);
+            }
+        });
+        add_stage_button.set_onclick(Some(click_closure.as_ref().unchecked_ref()));
+        result.closures.push(click_closure); // Needs to be kept alive
+
+        let change_closure = create_callback(move |model, ui| {
+            if let Some(this) = ui.get_element(id).and_then(|u| u.as_outline()) {
+                this.on_select_change(model);
+            }
+        });
+        result.select.set_onclick(Some(change_closure.as_ref().unchecked_ref()));
+        result.closures.push(change_closure); // Needs to be kept alive
+
 
         result.refresh(model);
 
@@ -73,23 +95,40 @@ impl Outline {
     }
 
     fn refresh(&mut self, model: &Model) {
-        while self.select.options().length() > 0 {
-            //TODO: also delete optgroups!
-            self.select.options().remove(0).expect("Failed to delete option");
+        while self.select.child_element_count() > 0 {
+            self.select.first_element_child().expect("Child element missing").remove();
             //TODO: also delete delete button click closures?
         }
 
         for (tournament_id, tournament) in model.get_tournaments() {
-            let opt_group = create_element::<HtmlOptGroupElement>("optgroup");
-            opt_group.set_label(&tournament.name);
+            // Note we don't use optgroups for tournaments, so that they are still selectable
+            let option = create_element::<HtmlOptionElement>("option");
+            option.set_value(&tournament_id.to_string());
+            option.set_text(&tournament.name);
+            self.select.add_with_html_option_element(&option).expect("Failed to append option");
 
             for (stage_id, stage) in &tournament.stages {
                 let option = create_element::<HtmlOptionElement>("option");
                 option.set_value(&stage_id.to_string());
-                option.set_text(&stage.name);
-                opt_group.append_child(&option).expect("Failed to append child");
+                option.set_text(&format!("--{}", stage.name));
+                self.select.add_with_html_option_element(&option).expect("Failed to append option");
             }
-            self.select.add_with_html_opt_group_element(&opt_group).expect("Failed to append optgroup");
         }
+    }
+
+    fn on_add_tournament_button_click(&self, model: &mut Model) {
+        model.add_tournament(self.new_tournament_name_input.value());
+    }
+
+    fn on_add_stage_button_click(&self, model: &mut Model) {
+        if let Some(t) = self.selected_tournament_id {
+            model.add_stage(t, self.new_stage_name_input.value());
+        }
+    }
+
+    fn on_select_change(&mut self, model: &mut Model) {
+        self.selected_tournament_id = x;
+        self.selected_stage_id = y;
+        debug!("{:?}", self.select.selected_options());
     }
 }
