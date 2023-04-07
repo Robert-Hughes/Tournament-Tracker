@@ -1,6 +1,4 @@
-use std::collections::BTreeMap;
-
-use log::{error, debug};
+use log::{error};
 use wasm_bindgen::{JsCast, prelude::Closure};
 use web_sys::{HtmlTableElement, HtmlTableRowElement, HtmlInputElement, HtmlElement, HtmlTableSectionElement, HtmlButtonElement, window};
 

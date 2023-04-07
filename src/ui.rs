@@ -1,5 +1,3 @@
-use std::any::Any;
-
 use indexmap::IndexMap;
 use indexmap::indexmap;
 use wasm_bindgen::prelude::Closure;
@@ -78,10 +76,10 @@ impl Ui {
     /// around too many mutable references.
     pub fn process_events(&mut self, model: &Model) {
         let mut all_events = EventList::new();
-        for (id, e) in &mut self.elements {
+        for (_id, e) in &mut self.elements {
             all_events.combine(e.get_events());
         }
-        for (id, e) in &mut self.elements {
+        for (_id, e) in &mut self.elements {
             e.process_events(&all_events, model);
         }
     }

@@ -99,7 +99,7 @@ impl RoundRobinTable {
         let cell = new_row.insert_cell().expect("Failed to insert cell");
         cell.set_inner_text(&team.name);
 
-        for (&other_team_id, other_team) in teams {
+        for (&other_team_id, _other_team) in teams {
             let cell = new_row.insert_cell().expect("Failed to insert cell");
 
             // Check if these teams have played

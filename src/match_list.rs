@@ -1,8 +1,8 @@
 use log::error;
 use wasm_bindgen::{JsCast, prelude::Closure};
-use web_sys::{HtmlTableElement, HtmlTableRowElement, HtmlInputElement, HtmlElement, HtmlTableSectionElement, HtmlButtonElement, window};
+use web_sys::{HtmlTableElement, HtmlTableRowElement, HtmlTableSectionElement, HtmlButtonElement, window};
 
-use crate::{dom::{create_element, create_html_element}, tournament::{StageId, TournamentId, TeamId, Stage, Match, MatchId}, model::Model, ui::{create_callback, UiElementId, UiElement, EventList, Event}};
+use crate::{dom::{create_element}, tournament::{StageId, TournamentId, Stage, Match, MatchId}, model::Model, ui::{create_callback, UiElementId, UiElement, EventList, Event}};
 
 //TODO: swap blue/red side for a match
 
@@ -13,6 +13,7 @@ pub struct MatchList {
     linked_outline_id: UiElementId,
 
     dom_table: HtmlTableElement,
+    #[allow(unused)]
     head_row: HtmlTableRowElement,
     body: HtmlTableSectionElement,
 
@@ -70,7 +71,7 @@ impl MatchList {
 
         if let (Some(tournament_id), Some(stage_id)) = (self.tournament_id, self.stage_id) {
             if let Some(stage) = model.get_stage(tournament_id, stage_id) {
-                for (idx, (match_id, m)) in stage.matches.iter().enumerate() {
+                for (idx, (_match_id, m)) in stage.matches.iter().enumerate() {
                     self.add_match_elements(m, idx, stage);
                 }
             }
