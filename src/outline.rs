@@ -2,7 +2,7 @@ use log::{error, debug};
 use wasm_bindgen::{JsCast, prelude::Closure};
 use web_sys::{HtmlTableElement, HtmlTableRowElement, HtmlInputElement, HtmlElement, HtmlTableSectionElement, HtmlButtonElement, window, HtmlSelectElement, HtmlDivElement, HtmlOptGroupElement, HtmlOptionElement};
 
-use crate::{dom::{create_element, create_html_element}, tournament::{StageId, TournamentId, TeamId, Stage, self}, model::Model, ui::{create_callback, UiElementId, UiElement}};
+use crate::{dom::{create_element, create_html_element}, tournament::{StageId, TournamentId, TeamId, Stage, self}, model::Model, ui::{create_callback, UiElementId, UiElement, EventList, Event}};
 
 //TODO: reorder tournaments and stages
 //TODO: rename tournaments and stages
@@ -18,6 +18,7 @@ pub struct Outline {
 
     selected_tournament_id: Option<TournamentId>,
     selected_stage_id: Option<StageId>,
+    selection_change_event_pending: bool,
 
     closures: Vec<Closure::<dyn FnMut()>>,
 }
@@ -58,7 +59,8 @@ impl Outline {
         add_stage_button.set_inner_text("Add stage");
         div.append_child(&add_stage_button).expect("Failed to append child");
 
-        let mut result = Outline { id, div, select, new_tournament_name_input, new_stage_name_input, selected_tournament_id: None, selected_stage_id: None, closures: vec![] };
+        let mut result = Outline { id, div, select, new_tournament_name_input, new_stage_name_input,
+            selected_tournament_id: None, selected_stage_id: None, selection_change_event_pending: false, closures: vec![] };
 
         let click_closure = create_callback(move |model, ui| {
             if let Some(UiElement::Outline(this)) = ui.get_element(id) {
@@ -144,5 +146,14 @@ impl Outline {
             }
         }
         debug!("{:?} {:?}", self.selected_tournament_id, self.selected_stage_id);
+        self.selection_change_event_pending = true;
+    }
+
+    pub fn get_events(&mut self) -> EventList {
+        if self.selection_change_event_pending {
+            EventList::single(Event::SelectedTournamentAndStageChanged { source: self.id, new_tournament_id: self.selected_tournament_id, new_stage_id: self.selected_stage_id })
+        } else {
+            EventList::new()
+        }
     }
 }

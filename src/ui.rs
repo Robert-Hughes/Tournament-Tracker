@@ -8,6 +8,7 @@ use crate::match_list::MatchList;
 use crate::model::Model;
 use crate::outline::Outline;
 use crate::round_robin_standings::RoundRobinStandings;
+use crate::tournament::StageId;
 use crate::with_globals;
 use crate::{tournament::{TournamentId}, round_robin_table::RoundRobinTable};
 
@@ -26,24 +27,16 @@ pub enum UiElement {
     Outline(Outline),
 }
 
-impl UiElement {
-    fn get_id(&self) -> UiElementId {
-        match self {
-            UiElement::RoundRobinTable(x) => x.get_id(),
-            UiElement::RoundRobinStandings(x) => x.get_id(),
-            UiElement::MatchList(x) => x.get_id(),
-            UiElement::Outline(x) => x.get_id(),
-        }
+pub enum Event {
+    SelectedTournamentAndStageChanged {
+        source: UiElementId,
+        new_tournament_id: Option<TournamentId>,
+        new_stage_id: Option<StageId>,
     }
+}
 
-    fn tournament_changed(&mut self, model: &Model, tournament_id: TournamentId) {
-        match self {
-            UiElement::RoundRobinTable(x) => x.tournament_changed(model, tournament_id),
-            UiElement::RoundRobinStandings(x) => x.tournament_changed(model, tournament_id),
-            UiElement::MatchList(x) => x.tournament_changed(model, tournament_id),
-            UiElement::Outline(x) => x.tournament_changed(model, tournament_id),
-        }
-    }
+pub struct EventList {
+    events: Vec<Event>,
 }
 
 impl Ui {
@@ -80,7 +73,79 @@ impl Ui {
             self.get_element_mut(id).unwrap().tournament_changed(model, tournament_id);
         }
     }
+
+    /// Events are deferred until an explicit "pass" where we process them, to avoid passing
+    /// around too many mutable references.
+    pub fn process_events(&mut self, model: &Model) {
+        let mut all_events = EventList::new();
+        for (id, e) in &mut self.elements {
+            all_events.combine(e.get_events());
+        }
+        for (id, e) in &mut self.elements {
+            e.process_events(&all_events, model);
+        }
+    }
 }
+
+impl UiElement {
+    fn get_id(&self) -> UiElementId {
+        match self {
+            UiElement::RoundRobinTable(x) => x.get_id(),
+            UiElement::RoundRobinStandings(x) => x.get_id(),
+            UiElement::MatchList(x) => x.get_id(),
+            UiElement::Outline(x) => x.get_id(),
+        }
+    }
+
+    fn tournament_changed(&mut self, model: &Model, tournament_id: TournamentId) {
+        match self {
+            UiElement::RoundRobinTable(x) => x.tournament_changed(model, tournament_id),
+            UiElement::RoundRobinStandings(x) => x.tournament_changed(model, tournament_id),
+            UiElement::MatchList(x) => x.tournament_changed(model, tournament_id),
+            UiElement::Outline(x) => x.tournament_changed(model, tournament_id),
+        }
+    }
+
+    /// Events are deferred until an explicit "pass" where we process them, to avoid passing
+    /// around too many mutable references.
+    fn get_events(&mut self) -> EventList {
+        match self {
+            UiElement::Outline(x) => x.get_events(),
+            _ => EventList::new()
+        }
+    }
+
+    fn process_events(&mut self, events: &EventList, model: &Model) {
+        match self {
+            UiElement::RoundRobinTable(x) => x.process_events(events, model),
+            UiElement::RoundRobinStandings(x) => x.process_events(events, model),
+            UiElement::MatchList(x) => x.process_events(events, model),
+            _ => ()
+        }
+    }
+}
+
+impl EventList {
+    pub fn new() -> EventList {
+        EventList { events: vec![] }
+    }
+
+    pub fn single(e: Event) -> EventList {
+        EventList { events: vec![e] }
+    }
+
+    fn combine(&mut self, mut new_events: EventList) {
+        // We could do something more fancy here like merge duplicate events
+        self.events.append(&mut new_events.events);
+    }
+
+    pub fn get_events(&self) -> &Vec<Event> {
+        &self.events
+    }
+}
+
+
+
 
 /// Creates a wasm-bindgen Closure which can be called from Javascript, for use in event callbacks
 /// e.g. onclick.
@@ -94,6 +159,8 @@ pub fn create_callback<F: FnMut(&mut Model, &mut Ui) -> () + 'static>(mut f: F) 
         with_globals(|m, u| {
             f(m, u);
             m.process_updates(u);
+            u.process_events(m);
         });
     })
 }
+

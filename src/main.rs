@@ -51,34 +51,35 @@ fn main() {
     console_log::init_with_level(log::Level::Debug).expect("Failed to init logging");
 
     with_globals(|model, ui| {
-        let tournament_id = match model.get_tournaments().iter().find(|t| t.1.name == "LCS") {
-            Some((tid, _)) => *tid,
-            None => model.add_tournament("LCS".to_string()),
-        };
-        let stage_id = match model.get_tournament(tournament_id).unwrap().stages.iter().find(|t| t.1.name == "Group Stage") {
-            Some((sid, _)) => *sid,
-            None => model.add_stage(tournament_id, "Group Stage".to_string()).unwrap(),
-        };
+        // let tournament_id = match model.get_tournaments().iter().find(|t| t.1.name == "LCS") {
+        //     Some((tid, _)) => *tid,
+        //     None => model.add_tournament("LCS".to_string()),
+        // };
+        // let stage_id = match model.get_tournament(tournament_id).unwrap().stages.iter().find(|t| t.1.name == "Group Stage") {
+        //     Some((sid, _)) => *sid,
+        //     None => model.add_stage(tournament_id, "Group Stage".to_string()).unwrap(),
+        // };
 
         let outline = Outline::new(ui.get_next_id(), model);
         window().expect("Missing window").document().expect("Missing document").body().expect("Missing body").append_child(&outline.get_div()).expect("Failed to add div");
+        let outline_id = outline.get_id();
         ui.add_element(UiElement::Outline(outline));
 
         window().expect("Missing window").document().expect("Missing document").body().expect("Missing body").append_child(&create_html_element("hr")).expect("Failed to add element");
 
-        let standings = RoundRobinStandings::new(ui.get_next_id(), model, tournament_id, stage_id);
+        let standings = RoundRobinStandings::new(ui.get_next_id(), model, outline_id);
         window().expect("Missing window").document().expect("Missing document").body().expect("Missing body").append_child(&standings.get_dom_table()).expect("Failed to insert table");
         ui.add_element(UiElement::RoundRobinStandings(standings));
 
         window().expect("Missing window").document().expect("Missing document").body().expect("Missing body").append_child(&create_html_element("hr")).expect("Failed to add element");
 
-        let table = RoundRobinTable::new(ui.get_next_id(), model, tournament_id, stage_id);
+        let table = RoundRobinTable::new(ui.get_next_id(), model, outline_id);
         window().expect("Missing window").document().expect("Missing document").body().expect("Missing body").append_child(&table.get_dom_table()).expect("Failed to insert table");
         ui.add_element(UiElement::RoundRobinTable(table));
 
         window().expect("Missing window").document().expect("Missing document").body().expect("Missing body").append_child(&create_html_element("hr")).expect("Failed to add element");
 
-        let match_list = MatchList::new(ui.get_next_id(), model, tournament_id, stage_id);
+        let match_list = MatchList::new(ui.get_next_id(), model, outline_id);
         window().expect("Missing window").document().expect("Missing document").body().expect("Missing body").append_child(&match_list.get_dom_table()).expect("Failed to insert table");
         ui.add_element(UiElement::MatchList(match_list));
     });

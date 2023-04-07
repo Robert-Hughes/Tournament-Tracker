@@ -3,7 +3,7 @@ use log::error;
 use wasm_bindgen::{JsCast, prelude::Closure};
 use web_sys::{HtmlTableElement, HtmlTableRowElement, HtmlTableSectionElement};
 
-use crate::{dom::{create_element}, tournament::{StageId, TournamentId, Team, Match, TeamId}, model::Model, ui::{UiElement, UiElementId, create_callback}};
+use crate::{dom::{create_element}, tournament::{StageId, TournamentId, Team, Match, TeamId}, model::Model, ui::{UiElement, UiElementId, create_callback, EventList, Event}};
 
 //TODO: highlight column and row on mouse over? Or altnerate shading to make rows/cols easier to follow
 //TODO: sort by score?
@@ -12,8 +12,9 @@ use crate::{dom::{create_element}, tournament::{StageId, TournamentId, Team, Mat
 
 pub struct RoundRobinTable {
     id: UiElementId,
-    tournament_id: TournamentId,
-    stage_id: StageId,
+    tournament_id: Option<TournamentId>,
+    stage_id: Option<StageId>,
+    linked_outline_id: UiElementId,
 
     dom_table: HtmlTableElement,
     head_row: HtmlTableRowElement,
@@ -28,8 +29,21 @@ impl RoundRobinTable {
     }
 
     pub fn tournament_changed(&mut self, model: &Model, tournament_id: TournamentId) {
-        if tournament_id == self.tournament_id {
+        if Some(tournament_id) == self.tournament_id {
             self.refresh(model);
+        }
+    }
+
+    pub fn process_events(&mut self, events: &EventList, model: &Model) {
+        for e in events.get_events() {
+            match e {
+                Event::SelectedTournamentAndStageChanged { source, new_tournament_id, new_stage_id } if *source == self.linked_outline_id => {
+                    self.tournament_id = *new_tournament_id;
+                    self.stage_id = *new_stage_id;
+                    self.refresh(model);
+                }
+                _ => (),
+            }
         }
     }
 
@@ -37,7 +51,7 @@ impl RoundRobinTable {
         &self.dom_table
     }
 
-    pub fn new(id: UiElementId, model: &Model, tournament_id: TournamentId, stage_id: StageId) -> RoundRobinTable {
+    pub fn new(id: UiElementId, model: &Model, linked_outline_id: UiElementId) -> RoundRobinTable {
         let dom_table = create_element::<HtmlTableElement>("table");
 
         let head: HtmlTableSectionElement = dom_table.create_t_head().dyn_into().expect("Cast failed");
@@ -47,7 +61,7 @@ impl RoundRobinTable {
 
         let body: HtmlTableSectionElement = dom_table.create_t_body().dyn_into().expect("Cast failed");
 
-        let mut result = RoundRobinTable { id, tournament_id, stage_id, dom_table, head_row, body, closures: vec![] };
+        let mut result = RoundRobinTable { id, tournament_id: None, stage_id: None, linked_outline_id, dom_table, head_row, body, closures: vec![] };
 
         result.refresh(model);
 
@@ -63,16 +77,18 @@ impl RoundRobinTable {
             self.head_row.delete_cell(1).expect("Failed to delete cell");
         }
 
-        if let Some(stage) = model.get_stage(self.tournament_id, self.stage_id) {
-            // Column headings
-            for (_team_id, team) in &stage.teams {
-                let cell = self.head_row.insert_cell().expect("Failed to insert cell");
-                cell.set_inner_text(&team.name);
-            }
+        if let (Some(tournament_id), Some(stage_id)) = (self.tournament_id, self.stage_id) {
+            if let Some(stage) = model.get_stage(tournament_id, stage_id) {
+                // Column headings
+                for (_team_id, team) in &stage.teams {
+                    let cell = self.head_row.insert_cell().expect("Failed to insert cell");
+                    cell.set_inner_text(&team.name);
+                }
 
-            // One row per team
-            for (_team_id, team) in &stage.teams {
-                self.add_row(team, &stage.teams, &stage.matches);
+                // One row per team
+                for (_team_id, team) in &stage.teams {
+                    self.add_row(team, &stage.teams, &stage.matches);
+                }
             }
         }
     }
@@ -110,23 +126,25 @@ impl RoundRobinTable {
     }
 
     fn on_result_click(&self, model: &mut Model, team_id: TeamId, other_team_id: TeamId) {
-        if let Some(stage) = model.get_stage(self.tournament_id, self.stage_id) {
-            //TODO: check for confirmation before changing/removing match results?
+        if let (Some(tournament_id), Some(stage_id)) = (self.tournament_id, self.stage_id) {
+            if let Some(stage) = model.get_stage(tournament_id, stage_id) {
+                //TODO: check for confirmation before changing/removing match results?
 
-            // Check if these teams have played
-            if let Some((match_id, m)) = stage.matches.iter().find(|(_, m)| m.is_between(team_id, other_team_id)) {
-                if m.winner == team_id {
-                    if let Err(_) = model.delete_match(self.tournament_id, self.stage_id, *match_id) {
-                        error!("Failed to delete match");
+                // Check if these teams have played
+                if let Some((match_id, m)) = stage.matches.iter().find(|(_, m)| m.is_between(team_id, other_team_id)) {
+                    if m.winner == team_id {
+                        if let Err(_) = model.delete_match(tournament_id, stage_id, *match_id) {
+                            error!("Failed to delete match");
+                        }
+                        model.add_match(tournament_id, stage_id, team_id, other_team_id, other_team_id);
+                    } else {
+                        if let Err(_) = model.delete_match(tournament_id, stage_id, *match_id) {
+                            error!("Failed to delete match");
+                        }
                     }
-                    model.add_match(self.tournament_id, self.stage_id, team_id, other_team_id, other_team_id);
                 } else {
-                    if let Err(_) = model.delete_match(self.tournament_id, self.stage_id, *match_id) {
-                        error!("Failed to delete match");
-                    }
+                    model.add_match(tournament_id, stage_id, team_id, other_team_id, team_id);
                 }
-            } else {
-                model.add_match(self.tournament_id, self.stage_id, team_id, other_team_id, team_id);
             }
         }
     }

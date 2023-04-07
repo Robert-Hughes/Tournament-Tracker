@@ -1,10 +1,10 @@
 use std::collections::BTreeMap;
 
-use log::error;
+use log::{error, debug};
 use wasm_bindgen::{JsCast, prelude::Closure};
 use web_sys::{HtmlTableElement, HtmlTableRowElement, HtmlInputElement, HtmlElement, HtmlTableSectionElement, HtmlButtonElement, window};
 
-use crate::{dom::{create_element, create_html_element}, tournament::{StageId, TournamentId, TeamId, Stage, Team}, model::Model, ui::{create_callback, UiElementId, UiElement}};
+use crate::{dom::{create_element, create_html_element}, tournament::{StageId, TournamentId, TeamId, Stage, Team}, model::Model, ui::{create_callback, UiElementId, UiElement, Event, EventList}};
 
 
 //TODO: show total games played too
@@ -13,8 +13,9 @@ use crate::{dom::{create_element, create_html_element}, tournament::{StageId, To
 
 pub struct RoundRobinStandings {
     id: UiElementId,
-    tournament_id: TournamentId,
-    stage_id: StageId,
+    tournament_id: Option<TournamentId>,
+    stage_id: Option<StageId>,
+    linked_outline_id: UiElementId,
 
     dom_table: HtmlTableElement,
     head_row: HtmlTableRowElement,
@@ -30,8 +31,21 @@ impl RoundRobinStandings {
     }
 
     pub fn tournament_changed(&mut self, model: &Model, tournament_id: TournamentId) {
-        if tournament_id == self.tournament_id {
+        if Some(tournament_id) == self.tournament_id {
             self.refresh(model);
+        }
+    }
+
+    pub fn process_events(&mut self, events: &EventList, model: &Model) {
+        for e in events.get_events() {
+            match e {
+                Event::SelectedTournamentAndStageChanged { source, new_tournament_id, new_stage_id } if *source == self.linked_outline_id => {
+                    self.tournament_id = *new_tournament_id;
+                    self.stage_id = *new_stage_id;
+                    self.refresh(model);
+                }
+                _ => (),
+            }
         }
     }
 
@@ -39,7 +53,7 @@ impl RoundRobinStandings {
         &self.dom_table
     }
 
-    pub fn new(id: UiElementId, model: &Model, tournament_id: TournamentId, stage_id: StageId) -> RoundRobinStandings {
+    pub fn new(id: UiElementId, model: &Model, linked_outline_id: UiElementId) -> RoundRobinStandings {
         let dom_table = create_element::<HtmlTableElement>("table");
 
         let head: HtmlTableSectionElement = dom_table.create_t_head().dyn_into().expect("Cast failed");
@@ -63,7 +77,7 @@ impl RoundRobinStandings {
         add_team_button.set_inner_text("Add team");
         cell.append_child(&add_team_button).expect("Failed to append child");
 
-        let mut result = RoundRobinStandings { id, tournament_id, stage_id, dom_table, head_row, body, new_team_name_input, closures: vec![] };
+        let mut result = RoundRobinStandings { id, tournament_id: None, stage_id: None, linked_outline_id, dom_table, head_row, body, new_team_name_input, closures: vec![] };
 
         let click_closure = create_callback(move |model, ui| {
             if let Some(UiElement::RoundRobinStandings(this)) = ui.get_element(id) {
@@ -88,19 +102,21 @@ impl RoundRobinStandings {
             self.head_row.delete_cell(1).expect("Failed to delete cell");
         }
 
-        if let Some(stage) = model.get_stage(self.tournament_id, self.stage_id) {
-            // Sort by win/loss score
-            let mut sorted_teams : Vec<&Team> = stage.teams.values().collect();
-            sorted_teams.sort_by_cached_key(|t| {
-                let w = stage.matches.values().filter(|m| m.winner == t.id).count();
-                let l = stage.matches.values().filter(|m| m.loser == t.id).count();
-                (w, l)
-            });
+        if let (Some(tournament_id), Some(stage_id)) = (self.tournament_id, self.stage_id) {
+            if let Some(stage) = model.get_stage(tournament_id, stage_id) {
+                // Sort by win/loss score
+                let mut sorted_teams : Vec<&Team> = stage.teams.values().collect();
+                sorted_teams.sort_by_cached_key(|t| {
+                    let w = stage.matches.values().filter(|m| m.winner == t.id).count();
+                    let l = stage.matches.values().filter(|m| m.loser == t.id).count();
+                    (w, l)
+                });
 
-            for team in sorted_teams.iter().rev() {
-                self.add_team_elements(team.id, &team.name, stage);
+                for team in sorted_teams.iter().rev() {
+                    self.add_team_elements(team.id, &team.name, stage);
+                }
+
             }
-
         }
     }
 
@@ -133,16 +149,18 @@ impl RoundRobinStandings {
     }
 
     fn on_add_team_button_click(&self, model: &mut Model) {
-        model.add_team(self.tournament_id, self.stage_id, self.new_team_name_input.value());
-       // self.add_team_elements(&self.new_team_name_input.value());
-    }
-
-    fn on_delete_team_button_click(&self, model: &mut Model, team_id: TeamId, team_name: &str) {
-        if window().unwrap().confirm_with_message(&format!("Are you sure you want to delete team '{team_name}'? All data for this team will be lost!!")) == Ok(true) {
-            if let Err(_) = model.delete_team(self.tournament_id, self.stage_id, team_id) {
-                error!("Failed to delete team");
-            }
+        if let (Some(tournament_id), Some(stage_id)) = (self.tournament_id, self.stage_id) {
+            model.add_team(tournament_id, stage_id, self.new_team_name_input.value());
         }
     }
 
+    fn on_delete_team_button_click(&self, model: &mut Model, team_id: TeamId, team_name: &str) {
+        if let (Some(tournament_id), Some(stage_id)) = (self.tournament_id, self.stage_id) {
+            if window().unwrap().confirm_with_message(&format!("Are you sure you want to delete team '{team_name}'? All data for this team will be lost!!")) == Ok(true) {
+                if let Err(_) = model.delete_team(tournament_id, stage_id, team_id) {
+                    error!("Failed to delete team");
+                }
+            }
+        }
+    }
 }

@@ -2,14 +2,15 @@ use log::error;
 use wasm_bindgen::{JsCast, prelude::Closure};
 use web_sys::{HtmlTableElement, HtmlTableRowElement, HtmlInputElement, HtmlElement, HtmlTableSectionElement, HtmlButtonElement, window};
 
-use crate::{dom::{create_element, create_html_element}, tournament::{StageId, TournamentId, TeamId, Stage, Match, MatchId}, model::Model, ui::{create_callback, UiElementId, UiElement}};
+use crate::{dom::{create_element, create_html_element}, tournament::{StageId, TournamentId, TeamId, Stage, Match, MatchId}, model::Model, ui::{create_callback, UiElementId, UiElement, EventList, Event}};
 
 //TODO: swap blue/red side for a match
 
 pub struct MatchList {
     id: UiElementId,
-    tournament_id: TournamentId,
-    stage_id: StageId,
+    tournament_id: Option<TournamentId>,
+    stage_id: Option<StageId>,
+    linked_outline_id: UiElementId,
 
     dom_table: HtmlTableElement,
     head_row: HtmlTableRowElement,
@@ -24,8 +25,21 @@ impl MatchList {
     }
 
     pub fn tournament_changed(&mut self, model: &Model, tournament_id: TournamentId) {
-        if tournament_id == self.tournament_id {
+        if Some(tournament_id) == self.tournament_id {
             self.refresh(model);
+        }
+    }
+
+    pub fn process_events(&mut self, events: &EventList, model: &Model) {
+        for e in events.get_events() {
+            match e {
+                Event::SelectedTournamentAndStageChanged { source, new_tournament_id, new_stage_id } if *source == self.linked_outline_id => {
+                    self.tournament_id = *new_tournament_id;
+                    self.stage_id = *new_stage_id;
+                    self.refresh(model);
+                }
+                _ => (),
+            }
         }
     }
 
@@ -33,7 +47,7 @@ impl MatchList {
         &self.dom_table
     }
 
-    pub fn new(id: UiElementId, model: &Model, tournament_id: TournamentId, stage_id: StageId) -> MatchList {
+    pub fn new(id: UiElementId, model: &Model, linked_outline_id: UiElementId) -> MatchList {
         let dom_table = create_element::<HtmlTableElement>("table");
 
         let head: HtmlTableSectionElement = dom_table.create_t_head().dyn_into().expect("Cast failed");
@@ -41,7 +55,7 @@ impl MatchList {
 
         let body: HtmlTableSectionElement = dom_table.create_t_body().dyn_into().expect("Cast failed");
 
-        let mut result = MatchList { id, tournament_id, stage_id, dom_table, head_row, body, closures: vec![] };
+        let mut result = MatchList { id, tournament_id: None, stage_id: None, linked_outline_id, dom_table, head_row, body, closures: vec![] };
 
         result.refresh(model);
 
@@ -54,9 +68,11 @@ impl MatchList {
             //TODO: remove delete closures etc?
         }
 
-        if let Some(stage) = model.get_stage(self.tournament_id, self.stage_id) {
-            for (idx, (match_id, m)) in stage.matches.iter().enumerate() {
-                self.add_match_elements(m, idx, stage);
+        if let (Some(tournament_id), Some(stage_id)) = (self.tournament_id, self.stage_id) {
+            if let Some(stage) = model.get_stage(tournament_id, stage_id) {
+                for (idx, (match_id, m)) in stage.matches.iter().enumerate() {
+                    self.add_match_elements(m, idx, stage);
+                }
             }
         }
     }
@@ -121,16 +137,20 @@ impl MatchList {
     }
 
     fn on_delete_match_button_click(&self, model: &mut Model, match_id: MatchId) {
-        if window().unwrap().confirm_with_message(&format!("Are you sure you want to delete this match?")) == Ok(true) {
-            if let Err(_) = model.delete_match(self.tournament_id, self.stage_id, match_id) {
-                error!("Failed to delete match");
+        if let (Some(tournament_id), Some(stage_id)) = (self.tournament_id, self.stage_id) {
+            if window().unwrap().confirm_with_message(&format!("Are you sure you want to delete this match?")) == Ok(true) {
+                if let Err(_) = model.delete_match(tournament_id, stage_id, match_id) {
+                    error!("Failed to delete match");
+                }
             }
         }
     }
 
     fn on_reorder_match_button_click(&self, model: &mut Model, match_id: MatchId, new_idx: usize) {
-        if let Err(_) = model.reorder_match(self.tournament_id, self.stage_id, match_id, new_idx) {
-            error!("Failed to reorder match");
+        if let (Some(tournament_id), Some(stage_id)) = (self.tournament_id, self.stage_id) {
+            if let Err(_) = model.reorder_match(tournament_id, stage_id, match_id, new_idx) {
+                error!("Failed to reorder match");
+            }
         }
     }
 }
