@@ -18,21 +18,17 @@ pub struct MatchList {
     closures: Vec<Closure::<dyn FnMut()>>,
 }
 
-impl UiElement for MatchList {
-    fn get_id(&self) -> UiElementId {
+impl MatchList {
+    pub fn get_id(&self) -> UiElementId {
         self.id
     }
 
-    fn as_match_list(&self) -> Option<&MatchList> { Some(self) }
-
-    fn tournament_changed(&mut self, model: &Model, tournament_id: TournamentId) {
+    pub fn tournament_changed(&mut self, model: &Model, tournament_id: TournamentId) {
         if tournament_id == self.tournament_id {
             self.refresh(model);
         }
     }
-}
 
-impl MatchList {
     pub fn get_dom_table(&self) -> &HtmlTableElement {
         &self.dom_table
     }
@@ -76,7 +72,7 @@ impl MatchList {
         let id = self.id;
         let m_id = m.id;
         let click_closure = create_callback(move |model, ui| {
-            if let Some(this) = ui.get_element(id).and_then(|u| u.as_match_list()) {
+            if let Some(UiElement::MatchList(this)) = ui.get_element(id) {
                 this.on_delete_match_button_click(model, m_id);
             }
         });
@@ -92,7 +88,7 @@ impl MatchList {
             let id = self.id;
             let m_id = m.id;
             let click_closure = create_callback(move |model, ui| {
-                if let Some(this) = ui.get_element(id).and_then(|u| u.as_match_list()) {
+                if let Some(UiElement::MatchList(this)) = ui.get_element(id) {
                     this.on_reorder_match_button_click(model, m_id, idx - 1);
                 }
             });
@@ -108,7 +104,7 @@ impl MatchList {
             let id = self.id;
             let m_id = m.id;
             let click_closure = create_callback(move |model, ui| {
-                if let Some(this) = ui.get_element(id).and_then(|u| u.as_match_list()) {
+                if let Some(UiElement::MatchList(this)) = ui.get_element(id) {
                     this.on_reorder_match_button_click(model, m_id, idx + 1);
                 }
             });

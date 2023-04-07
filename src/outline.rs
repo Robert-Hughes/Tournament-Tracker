@@ -22,20 +22,15 @@ pub struct Outline {
     closures: Vec<Closure::<dyn FnMut()>>,
 }
 
-impl UiElement for Outline {
-    fn get_id(&self) -> UiElementId {
+impl Outline {
+    pub fn get_id(&self) -> UiElementId {
         self.id
     }
 
-    fn as_outline(&self) -> Option<&Outline> { Some(self) }
-    fn as_outline_mut(&mut self) -> Option<&mut Outline> { Some(self) }
-
-    fn tournament_changed(&mut self, model: &Model, tournament_id: TournamentId) {
+    pub fn tournament_changed(&mut self, model: &Model, tournament_id: TournamentId) {
         self.refresh(model);
     }
-}
 
-impl Outline {
     pub fn get_div(&self) -> &HtmlDivElement {
         &self.div
     }
@@ -66,7 +61,7 @@ impl Outline {
         let mut result = Outline { id, div, select, new_tournament_name_input, new_stage_name_input, selected_tournament_id: None, selected_stage_id: None, closures: vec![] };
 
         let click_closure = create_callback(move |model, ui| {
-            if let Some(this) = ui.get_element(id).and_then(|u| u.as_outline()) {
+            if let Some(UiElement::Outline(this)) = ui.get_element(id) {
                 this.on_add_tournament_button_click(model);
             }
         });
@@ -74,7 +69,7 @@ impl Outline {
         result.closures.push(click_closure); // Needs to be kept alive
 
         let click_closure = create_callback(move |model, ui| {
-            if let Some(this) = ui.get_element(id).and_then(|u| u.as_outline()) {
+            if let Some(UiElement::Outline(this)) = ui.get_element(id) {
                 this.on_add_stage_button_click(model);
             }
         });
@@ -82,7 +77,7 @@ impl Outline {
         result.closures.push(click_closure); // Needs to be kept alive
 
         let change_closure = create_callback(move |model, ui| {
-            if let Some(this) = ui.get_element_mut(id).and_then(|u| u.as_outline_mut()) {
+            if let Some(UiElement::Outline(this)) = ui.get_element_mut(id) {
                 this.on_select_change(model);
             }
         });

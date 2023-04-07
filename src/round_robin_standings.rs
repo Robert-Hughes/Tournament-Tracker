@@ -9,6 +9,7 @@ use crate::{dom::{create_element, create_html_element}, tournament::{StageId, To
 
 //TODO: show total games played too
 //TODO: show position (1st, 2nd etc), including ties
+//TODO: show 'trend' e.g. last 5 game score, or full list of 'WLLWLLWL'. Maybe show which teams against too?
 
 pub struct RoundRobinStandings {
     id: UiElementId,
@@ -23,21 +24,17 @@ pub struct RoundRobinStandings {
     closures: Vec<Closure::<dyn FnMut()>>,
 }
 
-impl UiElement for RoundRobinStandings {
-    fn get_id(&self) -> UiElementId {
+impl RoundRobinStandings {
+    pub fn get_id(&self) -> UiElementId {
         self.id
     }
 
-    fn as_round_robin_standings(&self) -> Option<&RoundRobinStandings> { Some(self) }
-
-    fn tournament_changed(&mut self, model: &Model, tournament_id: TournamentId) {
+    pub fn tournament_changed(&mut self, model: &Model, tournament_id: TournamentId) {
         if tournament_id == self.tournament_id {
             self.refresh(model);
         }
     }
-}
 
-impl RoundRobinStandings {
     pub fn get_dom_table(&self) -> &HtmlTableElement {
         &self.dom_table
     }
@@ -69,7 +66,7 @@ impl RoundRobinStandings {
         let mut result = RoundRobinStandings { id, tournament_id, stage_id, dom_table, head_row, body, new_team_name_input, closures: vec![] };
 
         let click_closure = create_callback(move |model, ui| {
-            if let Some(this) = ui.get_element(id).and_then(|u| u.as_round_robin_standings()) {
+            if let Some(UiElement::RoundRobinStandings(this)) = ui.get_element(id) {
                 this.on_add_team_button_click(model);
             }
         });
@@ -118,7 +115,7 @@ impl RoundRobinStandings {
         let id = self.id;
         let team_name2 = team_name.to_string();
         let click_closure = create_callback(move |model, ui| {
-            if let Some(this) = ui.get_element(id).and_then(|u| u.as_round_robin_standings()) {
+            if let Some(UiElement::RoundRobinStandings(this)) = ui.get_element(id) {
                 this.on_delete_team_button_click(model, team_id, &team_name2);
             }
         });

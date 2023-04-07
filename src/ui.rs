@@ -13,22 +13,37 @@ use crate::{tournament::{TournamentId}, round_robin_table::RoundRobinTable};
 
 /// Contains all the UI elements.
 pub struct Ui {
-    elements: IndexMap<UiElementId, Box<dyn UiElement>>,
+    elements: IndexMap<UiElementId, UiElement>,
     next_id: UiElementId,
 }
 
 pub type UiElementId = usize;
 
-pub trait UiElement : Any {
-    fn get_id(&self) -> UiElementId;
+pub enum UiElement {
+    RoundRobinTable(RoundRobinTable),
+    RoundRobinStandings(RoundRobinStandings),
+    MatchList(MatchList),
+    Outline(Outline),
+}
 
-    fn as_round_robin_table(&self) -> Option<&RoundRobinTable> { None }
-    fn as_round_robin_standings(&self) -> Option<&RoundRobinStandings> { None }
-    fn as_match_list(&self) -> Option<&MatchList> { None }
-    fn as_outline(&self) -> Option<&Outline> { None }
-    fn as_outline_mut(&mut self) -> Option<&mut Outline> { None }
+impl UiElement {
+    fn get_id(&self) -> UiElementId {
+        match self {
+            UiElement::RoundRobinTable(x) => x.get_id(),
+            UiElement::RoundRobinStandings(x) => x.get_id(),
+            UiElement::MatchList(x) => x.get_id(),
+            UiElement::Outline(x) => x.get_id(),
+        }
+    }
 
-    fn tournament_changed(&mut self, model: &Model, tournament_id: TournamentId);
+    fn tournament_changed(&mut self, model: &Model, tournament_id: TournamentId) {
+        match self {
+            UiElement::RoundRobinTable(x) => x.tournament_changed(model, tournament_id),
+            UiElement::RoundRobinStandings(x) => x.tournament_changed(model, tournament_id),
+            UiElement::MatchList(x) => x.tournament_changed(model, tournament_id),
+            UiElement::Outline(x) => x.tournament_changed(model, tournament_id),
+        }
+    }
 }
 
 impl Ui {
@@ -42,19 +57,19 @@ impl Ui {
         id
     }
 
-    pub fn get_elements(&self) -> &IndexMap<UiElementId, Box<dyn UiElement>> {
+    pub fn get_elements(&self) -> &IndexMap<UiElementId, UiElement> {
         &self.elements
     }
 
-    pub fn get_element(&self, id: UiElementId) -> Option<&Box<dyn UiElement>> {
+    pub fn get_element(&self, id: UiElementId) -> Option<&UiElement> {
         self.elements.get(&id)
     }
-    pub fn get_element_mut(&mut self, id: UiElementId) -> Option<&mut Box<dyn UiElement>> {
+    pub fn get_element_mut(&mut self, id: UiElementId) -> Option<&mut UiElement> {
         self.elements.get_mut(&id)
     }
 
 
-    pub fn add_element(&mut self, element: Box<dyn UiElement>) {
+    pub fn add_element(&mut self, element: UiElement) {
         self.elements.insert(element.get_id(), element);
     }
 
