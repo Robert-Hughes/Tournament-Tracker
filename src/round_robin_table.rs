@@ -6,6 +6,8 @@ use web_sys::{HtmlTableElement, HtmlTableRowElement, HtmlTableSectionElement};
 use crate::{dom::{create_element}, tournament::{StageId, TournamentId, Team, Match, TeamId}, model::Model, ui::{UiElement, UiElementId, create_callback}};
 
 //TODO: highlight column and row on mouse over? Or altnerate shading to make rows/cols easier to follow
+//TODO: sort by score?
+//TODO: support multiple games between the same teams (e.g. double round robin)
 
 pub struct RoundRobinTable {
     id: UiElementId,

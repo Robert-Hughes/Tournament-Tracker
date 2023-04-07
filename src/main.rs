@@ -23,6 +23,7 @@ mod ui;
 //  e.g. percentages of playoffs without permanently changing the already-completed matches
 //TODO: round-robin diagram with arrows (like I draw on paint), useful for smaller groups e.g. 4
 //TODO: import data from lolesports or lol wiki?
+//TODO: highlight teams on mouse hover (synced across all the different UI elements)
 
 // We use some global state as callbacks from the Javascript world (e.g. click event handlers)
 // will need the Model (for example), but we can't easily store a reference in the callback closure

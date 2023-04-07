@@ -26,6 +26,7 @@ pub trait UiElement : Any {
     fn as_round_robin_standings(&self) -> Option<&RoundRobinStandings> { None }
     fn as_match_list(&self) -> Option<&MatchList> { None }
     fn as_outline(&self) -> Option<&Outline> { None }
+    fn as_outline_mut(&mut self) -> Option<&mut Outline> { None }
 
     fn tournament_changed(&mut self, model: &Model, tournament_id: TournamentId);
 }

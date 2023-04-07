@@ -2,7 +2,7 @@ use log::{error, debug};
 use wasm_bindgen::{JsCast, prelude::Closure};
 use web_sys::{HtmlTableElement, HtmlTableRowElement, HtmlInputElement, HtmlElement, HtmlTableSectionElement, HtmlButtonElement, window, HtmlSelectElement, HtmlDivElement, HtmlOptGroupElement, HtmlOptionElement};
 
-use crate::{dom::{create_element, create_html_element}, tournament::{StageId, TournamentId, TeamId, Stage}, model::Model, ui::{create_callback, UiElementId, UiElement}};
+use crate::{dom::{create_element, create_html_element}, tournament::{StageId, TournamentId, TeamId, Stage, self}, model::Model, ui::{create_callback, UiElementId, UiElement}};
 
 //TODO: reorder tournaments and stages
 //TODO: rename tournaments and stages
@@ -28,6 +28,7 @@ impl UiElement for Outline {
     }
 
     fn as_outline(&self) -> Option<&Outline> { Some(self) }
+    fn as_outline_mut(&mut self) -> Option<&mut Outline> { Some(self) }
 
     fn tournament_changed(&mut self, model: &Model, tournament_id: TournamentId) {
         self.refresh(model);
@@ -81,11 +82,13 @@ impl Outline {
         result.closures.push(click_closure); // Needs to be kept alive
 
         let change_closure = create_callback(move |model, ui| {
-            if let Some(this) = ui.get_element(id).and_then(|u| u.as_outline()) {
+            if let Some(this) = ui.get_element_mut(id).and_then(|u| u.as_outline_mut()) {
                 this.on_select_change(model);
             }
         });
         result.select.set_onclick(Some(change_closure.as_ref().unchecked_ref()));
+        result.select.set_onkeydown(Some(change_closure.as_ref().unchecked_ref())); // onclick doesn't work for keyboard events!
+
         result.closures.push(change_closure); // Needs to be kept alive
 
 
@@ -105,12 +108,15 @@ impl Outline {
             let option = create_element::<HtmlOptionElement>("option");
             option.set_value(&tournament_id.to_string());
             option.set_text(&tournament.name);
+            option.dataset().set("tournament_id", &tournament_id.to_string());
             self.select.add_with_html_option_element(&option).expect("Failed to append option");
 
             for (stage_id, stage) in &tournament.stages {
                 let option = create_element::<HtmlOptionElement>("option");
                 option.set_value(&stage_id.to_string());
                 option.set_text(&format!("--{}", stage.name));
+                option.dataset().set("tournament_id", &tournament_id.to_string());
+                option.dataset().set("stage_id", &stage_id.to_string());
                 self.select.add_with_html_option_element(&option).expect("Failed to append option");
             }
         }
@@ -127,8 +133,21 @@ impl Outline {
     }
 
     fn on_select_change(&mut self, model: &mut Model) {
-        self.selected_tournament_id = x;
-        self.selected_stage_id = y;
-        debug!("{:?}", self.select.selected_options());
+        match self.select.selected_options() {
+            x if x.length() == 0 => {
+                self.selected_tournament_id = None;
+                self.selected_stage_id = None;
+            },
+            x if x.length() == 1 => {
+                let o = x.item(0).expect("Just checked the length");
+                let o: HtmlElement = o.dyn_into().expect("Should be an HTML option");
+                self.selected_tournament_id = o.dataset().get("tournament_id").and_then(|t| t.parse().ok());
+                self.selected_stage_id = o.dataset().get("stage_id").and_then(|t| t.parse().ok());
+            }
+            _ => {
+                error!("Multi-select should not be possible!");
+            }
+        }
+        debug!("{:?} {:?}", self.selected_tournament_id, self.selected_stage_id);
     }
 }

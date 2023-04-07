@@ -1,11 +1,14 @@
+use std::collections::BTreeMap;
+
 use log::error;
 use wasm_bindgen::{JsCast, prelude::Closure};
 use web_sys::{HtmlTableElement, HtmlTableRowElement, HtmlInputElement, HtmlElement, HtmlTableSectionElement, HtmlButtonElement, window};
 
-use crate::{dom::{create_element, create_html_element}, tournament::{StageId, TournamentId, TeamId, Stage}, model::Model, ui::{create_callback, UiElementId, UiElement}};
+use crate::{dom::{create_element, create_html_element}, tournament::{StageId, TournamentId, TeamId, Stage, Team}, model::Model, ui::{create_callback, UiElementId, UiElement}};
 
 
 //TODO: show total games played too
+//TODO: show position (1st, 2nd etc), including ties
 
 pub struct RoundRobinStandings {
     id: UiElementId,
@@ -89,9 +92,18 @@ impl RoundRobinStandings {
         }
 
         if let Some(stage) = model.get_stage(self.tournament_id, self.stage_id) {
-            for (team_id, team) in &stage.teams {
-                self.add_team_elements(*team_id, &team.name, stage);
+            // Sort by win/loss score
+            let mut sorted_teams : Vec<&Team> = stage.teams.values().collect();
+            sorted_teams.sort_by_cached_key(|t| {
+                let w = stage.matches.values().filter(|m| m.winner == t.id).count();
+                let l = stage.matches.values().filter(|m| m.loser == t.id).count();
+                (w, l)
+            });
+
+            for team in sorted_teams.iter().rev() {
+                self.add_team_elements(team.id, &team.name, stage);
             }
+
         }
     }
 

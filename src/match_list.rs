@@ -4,6 +4,8 @@ use web_sys::{HtmlTableElement, HtmlTableRowElement, HtmlInputElement, HtmlEleme
 
 use crate::{dom::{create_element, create_html_element}, tournament::{StageId, TournamentId, TeamId, Stage, Match, MatchId}, model::Model, ui::{create_callback, UiElementId, UiElement}};
 
+//TODO: swap blue/red side for a match
+
 pub struct MatchList {
     id: UiElementId,
     tournament_id: TournamentId,
