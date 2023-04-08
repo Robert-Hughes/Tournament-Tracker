@@ -18,7 +18,7 @@ mod outline;
 mod model;
 mod ui;
 
-//TODO: maybe have a read-only lock toggle, for entering match results vs. viewing stats etc.
+//TODO: maybe have a read-only lock toggle, for entering match results vs. viewing stats etc. It's too easy to accidentally click and lose data!
 //TODO: "what-if" mode where can enter potential future results to see what happens,
 //  e.g. percentages of playoffs without permanently changing the already-completed matches
 //TODO: round-robin diagram with arrows (like I draw on paint), useful for smaller groups e.g. 4

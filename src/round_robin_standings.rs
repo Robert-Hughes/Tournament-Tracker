@@ -105,8 +105,8 @@ impl RoundRobinStandings {
                 // Sort by win/loss score
                 let mut sorted_teams : Vec<&Team> = stage.teams.values().collect();
                 sorted_teams.sort_by_cached_key(|t| {
-                    let w = stage.matches.values().filter(|m| m.winner == t.id).count();
-                    let l = stage.matches.values().filter(|m| m.loser == t.id).count();
+                    let w = stage.matches.values().filter(|m| m.get_winner() == Some(t.id)).count();
+                    let l = stage.matches.values().filter(|m| m.get_loser() == Some(t.id)).count();
                     (w, l)
                 });
 
@@ -141,8 +141,8 @@ impl RoundRobinStandings {
         cell.set_inner_text(&team_name);
 
         let cell = new_row.insert_cell().expect("Failed to insert cell");
-        let w = stage.matches.values().filter(|m| m.winner == team_id).count();
-        let l = stage.matches.values().filter(|m| m.loser == team_id).count();
+        let w = stage.matches.values().filter(|m| m.get_winner() == Some(team_id)).count();
+        let l = stage.matches.values().filter(|m| m.get_loser() == Some(team_id)).count();
         cell.set_inner_text(&format!("{w} - {l}"));
     }
 

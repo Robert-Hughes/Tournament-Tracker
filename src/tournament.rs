@@ -21,7 +21,6 @@ pub struct Stage  {
 
     pub name: String,
     pub teams: IndexMap<TeamId, Team>,
-    //TODO: any way to re-order matches from GUI?
     pub matches: IndexMap<MatchId, Match>,
 }
 
@@ -39,9 +38,10 @@ pub struct Team {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Match {
     pub id: MatchId,
-    pub teams: [TeamId; 2],
-    pub winner: TeamId,
-    pub loser: TeamId,
+    pub team_a: TeamId,
+    pub team_b: TeamId,
+    pub team_a_score: u32,
+    pub team_b_score: u32,
 }
 
 impl Tournament {
@@ -63,18 +63,28 @@ impl Team {
 }
 
 impl Match {
-    pub fn new(id: MatchId, team_a: TeamId, team_b: TeamId, winner: TeamId) -> Option<Match> {
-        if winner != team_a && winner != team_b {
-            return None;
-        }
-        if team_a == team_b {
-            return None;
-        }
-        let loser = if winner == team_a { team_b } else { team_a };
-        Some(Match { id, teams: [team_a, team_b], winner, loser })
+    pub fn is_between(&self, a: TeamId, b: TeamId) -> bool {
+        let t = [self.team_a, self.team_b];
+        t == [a, b] ||t == [b, a]
     }
 
-    pub fn is_between(&self, a: TeamId, b: TeamId) -> bool {
-        self.teams == [a, b] || self.teams == [b, a]
+    pub fn contains(&self, t: TeamId) -> bool {
+        self.team_a == t || self.team_b == t
+    }
+
+    pub fn get_winner(&self) -> Option<TeamId> {
+        match self.team_a_score.cmp(&self.team_b_score) {
+            std::cmp::Ordering::Less => Some(self.team_b),
+            std::cmp::Ordering::Equal => None,
+            std::cmp::Ordering::Greater => Some(self.team_a),
+        }
+    }
+
+    pub fn get_loser(&self) -> Option<TeamId> {
+        match self.team_a_score.cmp(&self.team_b_score) {
+            std::cmp::Ordering::Less => Some(self.team_a),
+            std::cmp::Ordering::Equal => None,
+            std::cmp::Ordering::Greater => Some(self.team_b),
+        }
     }
 }

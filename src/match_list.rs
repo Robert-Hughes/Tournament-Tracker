@@ -130,10 +130,10 @@ impl MatchList {
         }
 
         let cell = new_row.insert_cell().expect("Failed to insert cell");
-        let team_a = stage.teams.get(&m.teams[0]).map(|t| &t.name[..]).unwrap_or("?");
-        let team_a_score = if m.winner == m.teams[0] { 1 } else { 0 };
-        let team_b = stage.teams.get(&m.teams[1]).map(|t| &t.name[..]).unwrap_or("?");
-        let team_b_score = if m.winner == m.teams[1] { 1 } else { 0 };
+        let team_a = stage.teams.get(&m.team_a).map(|t| &t.name[..]).unwrap_or("?");
+        let team_a_score = m.team_a_score;
+        let team_b = stage.teams.get(&m.team_b).map(|t| &t.name[..]).unwrap_or("?");
+        let team_b_score = m.team_b_score;
         cell.set_inner_text(&format!("{team_a} {team_a_score} - {team_b_score} {team_b}"));
     }
 

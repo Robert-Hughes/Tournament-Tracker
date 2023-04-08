@@ -8,6 +8,7 @@ use crate::{dom::{create_element}, tournament::{StageId, TournamentId, Team, Mat
 //TODO: highlight column and row on mouse over? Or altnerate shading to make rows/cols easier to follow
 //TODO: sort by score?
 //TODO: support multiple games between the same teams (e.g. double round robin)
+//TODO: what about tie breaker games after the normal round robins?
 //TODO: make cells uniform width
 
 pub struct RoundRobinTable {
@@ -104,7 +105,7 @@ impl RoundRobinTable {
 
             // Check if these teams have played
             if let Some((_, m)) = matches.iter().find(|(_, m)| m.is_between(team.id, other_team_id)) {
-                cell.set_inner_text(if m.winner == team.id { "W" } else { "L" });
+                cell.set_inner_text(if m.get_winner() == Some(team.id) { "W" } else { "L" });
             } else if team.id == other_team_id {
                 cell.set_inner_text("+"); // make the diagonal distinguished from other matches not yet played (as these can never be played!)
             } else {
@@ -132,18 +133,18 @@ impl RoundRobinTable {
 
                 // Check if these teams have played
                 if let Some((match_id, m)) = stage.matches.iter().find(|(_, m)| m.is_between(team_id, other_team_id)) {
-                    if m.winner == team_id {
+                    if m.get_winner() == Some(team_id) {
                         if let Err(_) = model.delete_match(tournament_id, stage_id, *match_id) {
                             error!("Failed to delete match");
                         }
-                        model.add_match(tournament_id, stage_id, team_id, other_team_id, other_team_id);
+                        model.add_match(tournament_id, stage_id, team_id, other_team_id, 0, 1);
                     } else {
                         if let Err(_) = model.delete_match(tournament_id, stage_id, *match_id) {
                             error!("Failed to delete match");
                         }
                     }
                 } else {
-                    model.add_match(tournament_id, stage_id, team_id, other_team_id, team_id);
+                    model.add_match(tournament_id, stage_id, team_id, other_team_id, 1, 0);
                 }
             }
         }
