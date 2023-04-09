@@ -24,6 +24,8 @@ mod ui;
 //TODO: round-robin diagram with arrows (like I draw on paint), useful for smaller groups e.g. 4
 //TODO: import data from lolesports or lol wiki?
 //TODO: highlight teams on mouse hover (synced across all the different UI elements)
+//TODO: shortcut buttons for "preset" brackets, like single-elimination, double-elimination so that you don't have
+//      to manually create all the fixures and lay them out
 
 // We use some global state as callbacks from the Javascript world (e.g. click event handlers)
 // will need the Model (for example), but we can't easily store a reference in the callback closure

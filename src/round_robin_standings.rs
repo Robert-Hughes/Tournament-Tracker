@@ -18,7 +18,6 @@ pub struct RoundRobinStandings {
     dom_table: HtmlTableElement,
     head_row: HtmlTableRowElement,
     body: HtmlTableSectionElement,
-    new_team_name_input: HtmlInputElement,
 
     closures: Vec<Closure::<dyn FnMut()>>,
 }
@@ -66,16 +65,14 @@ impl RoundRobinStandings {
         let foot: HtmlTableSectionElement = dom_table.create_t_foot().dyn_into().expect("Cast failed");
         let foot_row: HtmlTableRowElement = foot.insert_row().expect("Failed to insert row").dyn_into().expect("Cast failed");
         let cell = foot_row.insert_cell().expect("Failed to insert cell");
-
-        let new_team_name_input: HtmlInputElement = create_element::<HtmlInputElement>("input");
-        new_team_name_input.set_placeholder("New team name");
-        cell.append_child(&new_team_name_input).expect("Failed to append child");
+        cell.set_inner_text("");
+        let cell = foot_row.insert_cell().expect("Failed to insert cell");
 
         let add_team_button: HtmlElement = create_html_element("button");
         add_team_button.set_inner_text("Add team");
         cell.append_child(&add_team_button).expect("Failed to append child");
 
-        let mut result = RoundRobinStandings { id, tournament_id: None, stage_id: None, linked_outline_id, dom_table, head_row, body, new_team_name_input, closures: vec![] };
+        let mut result = RoundRobinStandings { id, tournament_id: None, stage_id: None, linked_outline_id, dom_table, head_row, body, closures: vec![] };
 
         let click_closure = create_callback(move |model, ui| {
             if let Some(UiElement::RoundRobinStandings(this)) = ui.get_element(id) {
@@ -148,7 +145,9 @@ impl RoundRobinStandings {
 
     fn on_add_team_button_click(&self, model: &mut Model) {
         if let (Some(tournament_id), Some(stage_id)) = (self.tournament_id, self.stage_id) {
-            model.add_team(tournament_id, stage_id, self.new_team_name_input.value());
+            if let Ok(Some(name)) = window().unwrap().prompt_with_message("Enter name for new team:") {
+                model.add_team(tournament_id, stage_id, name);
+            }
         }
     }
 

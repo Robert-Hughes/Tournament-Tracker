@@ -120,10 +120,10 @@ impl Model {
         }
     }
 
-    pub fn add_stage_elimination(&mut self, tournament_id: TournamentId, name: String) -> Option<StageId> {
+    pub fn add_stage_bracket(&mut self, tournament_id: TournamentId, name: String) -> Option<StageId> {
         let id = self.get_next_id();
         if let Some(t) = self.tournaments.get_mut(&tournament_id) {
-            t.stages.insert(id, Stage::new_elimination(id, t.id, name));
+            t.stages.insert(id, Stage::new_bracket(id, t.id, name));
             let tid = t.id;
             self.changed_tournaments.push(tid);
             Some(id)
