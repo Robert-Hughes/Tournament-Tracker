@@ -18,13 +18,23 @@ if ($LastExitCode -ne 0) {
 
 # Turn the modifed wasm binary into a javascript hardcoded array of bytes. This means we can load it
 # using a file:// origin, without having to set up a web server (we can't load the binary file due to CORS)
+# Use our custom tool to do this, as it's faster than using native powershell stuff.
+# Note that this require a native release build to have been done, which we don't do here as it is unlikely to change very often!
 Write-Output "JS hardcoded array..."
-$wasmBytes = [System.IO.File]::ReadAllBytes("target\wasm32-unknown-unknown\debug\wasm-bindgen\tournament-tracker_bg.wasm")
-$js = [System.Text.StringBuilder]::new();
-[void]$js.Append("var WASM_BYTES = new Uint8Array([");
-foreach ($b in $wasmBytes) {
-    [void]$js.Append($b);
-    [void]$js.Append(",");
+target\release\bytes-to-text-tool.exe target\wasm32-unknown-unknown\debug\wasm-bindgen\tournament-tracker_bg.wasm target\wasm32-unknown-unknown\debug\wasm-bindgen\tournament-tracker_bg.wasm.js
+if ($LastExitCode -ne 0) {
+    exit
 }
-[void]$js.AppendLine("]);");
-[System.IO.File]::WriteAllText("target\wasm32-unknown-unknown\debug\wasm-bindgen\tournament-tracker_bg.wasm.js", $js);
+
+
+# $wasmBytes = [System.IO.File]::ReadAllBytes("target\wasm32-unknown-unknown\debug\wasm-bindgen\tournament-tracker_bg.wasm")
+# $js = [System.Text.StringBuilder]::new();
+# [void]$js.Append("var WASM_BYTES = new Uint8Array([");
+# foreach ($b in $wasmBytes) {
+#     [void]$js.Append($b);
+#     [void]$js.Append(",");
+# }
+# [void]$js.AppendLine("]);");
+# [System.IO.File]::WriteAllText("target\wasm32-unknown-unknown\debug\wasm-bindgen\tournament-tracker_bg.wasm.js", $js);
+
+Write-Output "Done!"

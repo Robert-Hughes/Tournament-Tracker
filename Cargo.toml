@@ -15,3 +15,7 @@ log = "0.4.17"
 indexmap = { version = "1.9.3", features=["serde"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+
+[[bin]]
+name="bytes-to-text-tool"
+path = "bytes-to-text-tool/bytes-to-text-tool.rs"
