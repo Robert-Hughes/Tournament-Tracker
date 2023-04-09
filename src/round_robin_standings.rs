@@ -58,7 +58,7 @@ impl RoundRobinStandings {
         let cell = head_row.insert_cell().expect("Failed to insert cell");
         cell.set_inner_text("Team:");
         let cell = head_row.insert_cell().expect("Failed to insert cell");
-        cell.set_inner_text(":");
+        cell.set_inner_text("Score:");
 
         let body: HtmlTableSectionElement = dom_table.create_t_body().dyn_into().expect("Cast failed");
 
@@ -120,6 +120,14 @@ impl RoundRobinStandings {
         let new_row: HtmlTableRowElement = self.body.insert_row().expect("Failed to insert row").dyn_into().expect("Cast failed");
 
         let cell = new_row.insert_cell().expect("Failed to insert cell");
+        cell.set_inner_text(&team_name);
+
+        let cell = new_row.insert_cell().expect("Failed to insert cell");
+        let w = stage.matches.values().filter(|m| m.get_winner() == Some(team_id)).count();
+        let l = stage.matches.values().filter(|m| m.get_loser() == Some(team_id)).count();
+        cell.set_inner_text(&format!("{w} - {l}"));
+
+        let cell = new_row.insert_cell().expect("Failed to insert cell");
         let delete_button: HtmlButtonElement = create_element("button");
         delete_button.set_inner_text("X");
         cell.append_child(&delete_button).expect("Failed to append button");
@@ -132,15 +140,6 @@ impl RoundRobinStandings {
         });
         delete_button.set_onclick(Some(click_closure.as_ref().unchecked_ref()));
         self.closures.push(click_closure); // Needs to be kept alive
-
-
-        let cell = new_row.insert_cell().expect("Failed to insert cell");
-        cell.set_inner_text(&team_name);
-
-        let cell = new_row.insert_cell().expect("Failed to insert cell");
-        let w = stage.matches.values().filter(|m| m.get_winner() == Some(team_id)).count();
-        let l = stage.matches.values().filter(|m| m.get_loser() == Some(team_id)).count();
-        cell.set_inner_text(&format!("{w} - {l}"));
     }
 
     fn on_add_team_button_click(&self, model: &mut Model) {
