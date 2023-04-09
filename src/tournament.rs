@@ -31,7 +31,7 @@ pub enum StageKind {
     RoundRobin {
 
     },
-    Elimination {
+    Bracket {
         fixtures: IndexMap<FixtureId, Fixture>,
     }
 }
@@ -63,6 +63,26 @@ pub struct Match {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Fixture {
     pub id: FixtureId,
+    /// The position of this fixture on the bracket view.
+    pub layout: (i32, i32),
+    /// If this fixture has already been played, this links to the match results.
+    pub match_id: Option<MatchId>,
+    /// If the team(s) playing in this fixture are determined by the results of a previous fixture,
+    /// that is recorded here. E.g. in an elimination bracket the winner will advance to the next fixture.
+    pub source_a: Option<FixtureSource>,
+    pub source_b: Option<FixtureSource>,
+}
+
+/// Describes the winner or loser of another fixture.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct FixtureSource {
+    pub fixture_id: FixtureId,
+    pub which_outcome: Outcome,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum Outcome {
+    Winner, Loser
 }
 
 impl Tournament {
@@ -76,8 +96,8 @@ impl Stage {
         Stage { id, tournament_id, name, teams: indexmap![], matches: indexmap![], kind: StageKind::RoundRobin {  } }
     }
 
-    pub fn new_elimination(id: StageId, tournament_id: TournamentId, name: String) -> Stage {
-        Stage { id, tournament_id, name, teams: indexmap![], matches: indexmap![], kind: StageKind::Elimination { fixtures: indexmap![] } }
+    pub fn new_bracket(id: StageId, tournament_id: TournamentId, name: String) -> Stage {
+        Stage { id, tournament_id, name, teams: indexmap![], matches: indexmap![], kind: StageKind::Bracket { fixtures: indexmap![] } }
     }
 }
 
