@@ -1,6 +1,6 @@
 use log::{error};
 use wasm_bindgen::{JsCast, prelude::Closure};
-use web_sys::{HtmlTableElement, HtmlTableRowElement, HtmlInputElement, HtmlElement, HtmlTableSectionElement, HtmlButtonElement, window};
+use web_sys::{HtmlTableElement, HtmlTableRowElement, HtmlElement, HtmlTableSectionElement, HtmlButtonElement, window};
 
 use crate::{dom::{create_element, create_html_element}, tournament::{StageId, TournamentId, TeamId, Stage, Team}, model::Model, ui::{create_callback, UiElementId, UiElement, Event, EventList}};
 

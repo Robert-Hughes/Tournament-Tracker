@@ -108,6 +108,15 @@ impl Model {
         id
     }
 
+    pub fn delete_tournament(&mut self, tournament_id: TournamentId) -> Result<(), ()> {
+        if self.tournaments.shift_remove(&tournament_id).is_some() {
+            self.changed_tournaments.push(tournament_id);
+            Ok(())
+        } else {
+            Err(())
+        }
+    }
+
     pub fn add_stage_round_robin(&mut self, tournament_id: TournamentId, name: String) -> Option<StageId> {
         let id = self.get_next_id();
         if let Some(t) = self.tournaments.get_mut(&tournament_id) {
@@ -129,6 +138,15 @@ impl Model {
             Some(id)
         } else {
             None
+        }
+    }
+
+    pub fn delete_stage(&mut self, tournament_id: TournamentId, stage_id: StageId) -> Result<(), ()> {
+        if self.tournaments.get_mut(&tournament_id).and_then(|t| t.stages.shift_remove(&stage_id)).is_some() {
+            self.changed_tournaments.push(tournament_id);
+            Ok(())
+        } else {
+            Err(())
         }
     }
 

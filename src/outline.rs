@@ -1,12 +1,11 @@
 use log::{error, debug};
 use wasm_bindgen::{JsCast, prelude::Closure};
-use web_sys::{HtmlInputElement, HtmlElement, HtmlSelectElement, HtmlDivElement, HtmlOptionElement, window};
+use web_sys::{HtmlElement, HtmlSelectElement, HtmlDivElement, HtmlOptionElement, window};
 
 use crate::{dom::{create_element, create_html_element}, tournament::{StageId, TournamentId}, model::Model, ui::{create_callback, UiElementId, UiElement, EventList, Event}};
 
 //TODO: reorder tournaments and stages
 //TODO: rename tournaments and stages
-//TODO: delete tournaments and stages
 
 pub struct Outline {
     id: UiElementId,
@@ -53,6 +52,10 @@ impl Outline {
         add_stage_bracket_button.set_inner_text("Add stage (bracket)");
         div.append_child(&add_stage_bracket_button).expect("Failed to append child");
 
+        let delete_button: HtmlElement = create_html_element("button");
+        delete_button.set_inner_text("Delete");
+        div.append_child(&delete_button).expect("Failed to append child");
+
         let mut result = Outline { id, div, select,
             selected_tournament_id: None, selected_stage_id: None, selection_change_event_pending: false, closures: vec![] };
 
@@ -78,6 +81,14 @@ impl Outline {
             }
         });
         add_stage_bracket_button.set_onclick(Some(click_closure.as_ref().unchecked_ref()));
+        result.closures.push(click_closure); // Needs to be kept alive
+
+        let click_closure = create_callback(move |model, ui| {
+            if let Some(UiElement::Outline(this)) = ui.get_element(id) {
+                this.on_delete_button_click(model);
+            }
+        });
+        delete_button.set_onclick(Some(click_closure.as_ref().unchecked_ref()));
         result.closures.push(click_closure); // Needs to be kept alive
 
         let change_closure = create_callback(move |_model, ui| {
@@ -143,6 +154,8 @@ impl Outline {
         }
     }
 
+    //TODO: this should fire when deleting something from the list, resulting in a refresh. However that would then break things
+    // whenever we modify a tournament that is currently selected - need to retain selection through a refresh!
     fn on_select_change(&mut self) {
         match self.select.selected_options() {
             x if x.length() == 0 => {
@@ -161,6 +174,28 @@ impl Outline {
         }
         debug!("{:?} {:?}", self.selected_tournament_id, self.selected_stage_id);
         self.selection_change_event_pending = true;
+    }
+
+    fn on_delete_button_click(&self, model: &mut Model) {
+        match (self.selected_tournament_id, self.selected_stage_id) {
+            (Some(t), Some(s)) => {
+                let stage_name = model.get_stage(t, s).map(|s| s.name.clone()).unwrap_or("".to_string());
+                if window().unwrap().confirm_with_message(&format!("Are you sure you want to delete stage '{stage_name}'? All data for this stage will be lost!!")) == Ok(true) {
+                    if let Err(_) = model.delete_stage(t, s) {
+                        error!("Failed to delete stage");
+                    }
+                }
+            }
+            (Some(t), None) => {
+                let tournament_name = model.get_tournament(t).map(|t| t.name.clone()).unwrap_or("".to_string());
+                if window().unwrap().confirm_with_message(&format!("Are you sure you want to delete tournament '{tournament_name}'? All data for this tournament will be lost!!")) == Ok(true) {
+                    if let Err(_) = model.delete_tournament(t) {
+                        error!("Failed to delete tournament");
+                    }
+                }
+            }
+            _ => (),
+        }
     }
 
     pub fn get_events(&mut self) -> EventList {
