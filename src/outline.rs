@@ -1,6 +1,6 @@
 use log::{error, debug};
 use wasm_bindgen::{JsCast, prelude::Closure};
-use web_sys::{HtmlInputElement, HtmlElement, HtmlSelectElement, HtmlDivElement, HtmlOptionElement};
+use web_sys::{HtmlInputElement, HtmlElement, HtmlSelectElement, HtmlDivElement, HtmlOptionElement, window};
 
 use crate::{dom::{create_element, create_html_element}, tournament::{StageId, TournamentId}, model::Model, ui::{create_callback, UiElementId, UiElement, EventList, Event}};
 
@@ -13,8 +13,6 @@ pub struct Outline {
 
     div: HtmlDivElement,
     select: HtmlSelectElement,
-    new_tournament_name_input: HtmlInputElement,
-    new_stage_name_input: HtmlInputElement,
 
     selected_tournament_id: Option<TournamentId>,
     selected_stage_id: Option<StageId>,
@@ -43,23 +41,19 @@ impl Outline {
         select.set_size(10);
         div.append_child(&select).expect("Failed to append child");
 
-        let new_tournament_name_input: HtmlInputElement = create_element::<HtmlInputElement>("input");
-        new_tournament_name_input.set_placeholder("New tournament name");
-        div.append_child(&new_tournament_name_input).expect("Failed to append child");
-
         let add_tournament_button: HtmlElement = create_html_element("button");
         add_tournament_button.set_inner_text("Add tournament");
         div.append_child(&add_tournament_button).expect("Failed to append child");
 
-        let new_stage_name_input: HtmlInputElement = create_element::<HtmlInputElement>("input");
-        new_stage_name_input.set_placeholder("New stage name");
-        div.append_child(&new_stage_name_input).expect("Failed to append child");
+        let add_stage_round_robin_button: HtmlElement = create_html_element("button");
+        add_stage_round_robin_button.set_inner_text("Add stage (round robin)");
+        div.append_child(&add_stage_round_robin_button).expect("Failed to append child");
 
-        let add_stage_button: HtmlElement = create_html_element("button");
-        add_stage_button.set_inner_text("Add stage");
-        div.append_child(&add_stage_button).expect("Failed to append child");
+        let add_stage_bracket_button: HtmlElement = create_html_element("button");
+        add_stage_bracket_button.set_inner_text("Add stage (bracket)");
+        div.append_child(&add_stage_bracket_button).expect("Failed to append child");
 
-        let mut result = Outline { id, div, select, new_tournament_name_input, new_stage_name_input,
+        let mut result = Outline { id, div, select,
             selected_tournament_id: None, selected_stage_id: None, selection_change_event_pending: false, closures: vec![] };
 
         let click_closure = create_callback(move |model, ui| {
@@ -72,10 +66,18 @@ impl Outline {
 
         let click_closure = create_callback(move |model, ui| {
             if let Some(UiElement::Outline(this)) = ui.get_element(id) {
-                this.on_add_stage_button_click(model);
+                this.on_add_stage_round_robin_button_click(model);
             }
         });
-        add_stage_button.set_onclick(Some(click_closure.as_ref().unchecked_ref()));
+        add_stage_round_robin_button.set_onclick(Some(click_closure.as_ref().unchecked_ref()));
+        result.closures.push(click_closure); // Needs to be kept alive
+
+        let click_closure = create_callback(move |model, ui| {
+            if let Some(UiElement::Outline(this)) = ui.get_element(id) {
+                this.on_add_stage_bracket_button_click(model);
+            }
+        });
+        add_stage_bracket_button.set_onclick(Some(click_closure.as_ref().unchecked_ref()));
         result.closures.push(click_closure); // Needs to be kept alive
 
         let change_closure = create_callback(move |_model, ui| {
@@ -120,12 +122,24 @@ impl Outline {
     }
 
     fn on_add_tournament_button_click(&self, model: &mut Model) {
-        model.add_tournament(self.new_tournament_name_input.value());
+        if let Ok(Some(name)) = window().unwrap().prompt_with_message("Enter name for new tournament:") {
+            model.add_tournament(name);
+        }
     }
 
-    fn on_add_stage_button_click(&self, model: &mut Model) {
+    fn on_add_stage_round_robin_button_click(&self, model: &mut Model) {
         if let Some(t) = self.selected_tournament_id {
-            model.add_stage_round_robin(t, self.new_stage_name_input.value());
+            if let Ok(Some(name)) = window().unwrap().prompt_with_message("Enter name for new stage:") {
+                model.add_stage_round_robin(t, name);
+            }
+        }
+    }
+
+    fn on_add_stage_bracket_button_click(&self, model: &mut Model) {
+        if let Some(t) = self.selected_tournament_id {
+            if let Ok(Some(name)) = window().unwrap().prompt_with_message("Enter name for new stage:") {
+                model.add_stage_bracket(t, name);
+            }
         }
     }
 
