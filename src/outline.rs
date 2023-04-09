@@ -125,7 +125,7 @@ impl Outline {
 
     fn on_add_stage_button_click(&self, model: &mut Model) {
         if let Some(t) = self.selected_tournament_id {
-            model.add_stage(t, self.new_stage_name_input.value());
+            model.add_stage_round_robin(t, self.new_stage_name_input.value());
         }
     }
 

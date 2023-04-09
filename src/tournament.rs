@@ -18,16 +18,29 @@ pub struct Tournament {
 pub struct Stage  {
     pub id: StageId,
     pub tournament_id: TournamentId,
-
     pub name: String,
+
     pub teams: IndexMap<TeamId, Team>,
     pub matches: IndexMap<MatchId, Match>,
+    #[serde(default = "default_stage_kind_for_deserialization")] // This field was added, so give it a default value so that we can deserialize old data
+    pub kind: StageKind,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum StageKind {
+    RoundRobin {
+
+    },
+    Elimination {
+        fixtures: IndexMap<FixtureId, Fixture>,
+    }
 }
 
 pub type TournamentId = usize;
 pub type StageId = usize;
 pub type TeamId = usize;
 pub type MatchId = usize;
+pub type FixtureId = usize;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Team {
@@ -35,6 +48,7 @@ pub struct Team {
     pub name: String,
 }
 
+/// A match is something that we already have the results for. See also Fixture.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Match {
     pub id: MatchId,
@@ -44,6 +58,13 @@ pub struct Match {
     pub team_b_score: u32,
 }
 
+/// A fixture is a match that might not yet have been played, used to describe an elimination bracket.
+/// See also Match.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Fixture {
+    pub id: FixtureId,
+}
+
 impl Tournament {
     pub fn new(id: TournamentId, name: String) -> Tournament {
         Tournament { id, name, stages: indexmap![] }
@@ -51,8 +72,12 @@ impl Tournament {
 }
 
 impl Stage {
-    pub fn new(id: StageId, tournament_id: TournamentId, name: String) -> Stage {
-        Stage { id, tournament_id, name, teams: indexmap![], matches: indexmap![] }
+    pub fn new_round_robin(id: StageId, tournament_id: TournamentId, name: String) -> Stage {
+        Stage { id, tournament_id, name, teams: indexmap![], matches: indexmap![], kind: StageKind::RoundRobin {  } }
+    }
+
+    pub fn new_elimination(id: StageId, tournament_id: TournamentId, name: String) -> Stage {
+        Stage { id, tournament_id, name, teams: indexmap![], matches: indexmap![], kind: StageKind::Elimination { fixtures: indexmap![] } }
     }
 }
 
@@ -87,4 +112,9 @@ impl Match {
             std::cmp::Ordering::Greater => Some(self.team_b),
         }
     }
+}
+
+// This field was added, so give it a default value so that we can deserialize old data
+fn default_stage_kind_for_deserialization() -> StageKind {
+    StageKind::RoundRobin {  }
 }

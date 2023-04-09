@@ -8,6 +8,8 @@ pub(crate) mod v1 {
     use serde::{Serialize, Deserialize};
     use web_sys::Storage;
 
+    use crate::tournament::StageKind;
+
     #[derive(Serialize, Deserialize, Debug)]
     struct Model {
         tournaments: IndexMap<TournamentId, Tournament>,
@@ -69,7 +71,7 @@ pub(crate) mod v1 {
             let mut new_tournament = crate::model::Tournament { id: old_tournament.id, name: old_tournament.name, stages: indexmap!{} };
 
             for (stage_id, old_stage) in old_tournament.stages {
-                let mut new_stage = crate::model::Stage { id: old_stage.id, name: old_stage.name, tournament_id, teams: indexmap!{}, matches: indexmap!{} };
+                let mut new_stage = crate::model::Stage { id: old_stage.id, name: old_stage.name, tournament_id, teams: indexmap!{}, matches: indexmap!{}, kind: StageKind::RoundRobin {  } };
 
                 for (team_id, old_team) in old_stage.teams {
                     let new_team = crate::model::Team { id: old_team.id, name: old_team.name };
