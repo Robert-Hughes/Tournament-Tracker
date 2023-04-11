@@ -3,7 +3,7 @@ use log::error;
 use wasm_bindgen::{JsCast, prelude::Closure};
 use web_sys::{HtmlTableElement, HtmlTableRowElement, HtmlTableSectionElement};
 
-use crate::{dom::{create_element}, tournament::{StageId, TournamentId, Team, Match, TeamId}, model::Model, ui::{UiElement, UiElementId, create_callback, EventList, Event}};
+use crate::{dom::{create_element}, model::tournament::{StageId, TournamentId, Team, Match, TeamId, StageKind}, model::Model, ui::{UiElement, UiElementId, create_callback, EventList, Event}};
 
 //TODO: highlight column and row on mouse over? Or altnerate shading to make rows/cols easier to follow
 //TODO: sort by score?
@@ -70,6 +70,17 @@ impl RoundRobinTable {
     }
 
     fn refresh(&mut self, model: &Model) {
+        let mut show = false;
+        if let (Some(tournament_id), Some(stage_id)) = (self.tournament_id, self.stage_id) {
+            if let Some(s) = model.get_stage(tournament_id, stage_id) {
+                if let StageKind::RoundRobin { .. } = s.kind {
+                    show = true;
+                }
+            }
+        }
+        self.dom_table.style().set_property("display",
+            if show { "block" } else { "none" }).expect("Failed to set style");
+
         while self.body.rows().length() > 0 {
             self.body.delete_row(0).expect("Failed to delete row");
             //TODO: remove closures for result cells?

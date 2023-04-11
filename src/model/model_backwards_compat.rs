@@ -8,7 +8,7 @@ pub(crate) mod v1 {
     use serde::{Serialize, Deserialize};
     use web_sys::Storage;
 
-    use crate::tournament::StageKind;
+    use crate::model::tournament::StageKind;
 
     #[derive(Serialize, Deserialize, Debug)]
     struct Model {

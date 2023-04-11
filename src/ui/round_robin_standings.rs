@@ -2,7 +2,7 @@ use log::{error};
 use wasm_bindgen::{JsCast, prelude::Closure};
 use web_sys::{HtmlTableElement, HtmlTableRowElement, HtmlElement, HtmlTableSectionElement, HtmlButtonElement, window};
 
-use crate::{dom::{create_element, create_html_element}, tournament::{StageId, TournamentId, TeamId, Stage, Team}, model::Model, ui::{create_callback, UiElementId, UiElement, Event, EventList}};
+use crate::{dom::{create_element, create_html_element}, model::tournament::{StageId, TournamentId, TeamId, Stage, Team, StageKind}, model::Model, ui::{create_callback, UiElementId, UiElement, Event, EventList}};
 
 
 //TODO: show total games played too
@@ -89,6 +89,17 @@ impl RoundRobinStandings {
     }
 
     fn refresh(&mut self, model: &Model) {
+        let mut show = false;
+        if let (Some(tournament_id), Some(stage_id)) = (self.tournament_id, self.stage_id) {
+            if let Some(s) = model.get_stage(tournament_id, stage_id) {
+                if let StageKind::RoundRobin { .. } = s.kind {
+                    show = true;
+                }
+            }
+        }
+        self.dom_table.style().set_property("display",
+            if show { "block" } else { "none" }).expect("Failed to set style");
+
         while self.body.rows().length() > 0 {
             self.body.delete_row(0).expect("Failed to delete row");
             //TODO: also delete delete button click closures?

@@ -2,13 +2,22 @@ use indexmap::IndexMap;
 use indexmap::indexmap;
 use wasm_bindgen::prelude::Closure;
 
-use crate::match_list::MatchList;
+use match_list::MatchList;
 use crate::model::Model;
-use crate::outline::Outline;
-use crate::round_robin_standings::RoundRobinStandings;
-use crate::tournament::StageId;
+use outline::Outline;
+use round_robin_standings::RoundRobinStandings;
+use round_robin_table::RoundRobinTable;
+use crate::model::tournament::StageId;
 use crate::with_globals;
-use crate::{tournament::{TournamentId}, round_robin_table::RoundRobinTable};
+use crate::model::{tournament::{TournamentId}};
+
+use self::bracket_view::BracketView;
+
+pub mod round_robin_table;
+pub mod round_robin_standings;
+pub mod match_list;
+pub mod outline;
+pub mod bracket_view;
 
 /// Contains all the UI elements.
 pub struct Ui {
@@ -23,6 +32,7 @@ pub enum UiElement {
     RoundRobinStandings(RoundRobinStandings),
     MatchList(MatchList),
     Outline(Outline),
+    BracketView(BracketView),
 }
 
 pub enum Event {
@@ -92,6 +102,7 @@ impl UiElement {
             UiElement::RoundRobinStandings(x) => x.get_id(),
             UiElement::MatchList(x) => x.get_id(),
             UiElement::Outline(x) => x.get_id(),
+            UiElement::BracketView(x) => x.get_id(),
         }
     }
 
@@ -101,6 +112,7 @@ impl UiElement {
             UiElement::RoundRobinStandings(x) => x.tournament_changed(model, tournament_id),
             UiElement::MatchList(x) => x.tournament_changed(model, tournament_id),
             UiElement::Outline(x) => x.tournament_changed(model, tournament_id),
+            UiElement::BracketView(x) => x.tournament_changed(model, tournament_id),
         }
     }
 
@@ -118,6 +130,7 @@ impl UiElement {
             UiElement::RoundRobinTable(x) => x.process_events(events, model),
             UiElement::RoundRobinStandings(x) => x.process_events(events, model),
             UiElement::MatchList(x) => x.process_events(events, model),
+            UiElement::BracketView(x) => x.process_events(events, model),
             _ => ()
         }
     }

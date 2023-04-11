@@ -2,7 +2,7 @@ use log::{error, debug};
 use wasm_bindgen::{JsCast, prelude::Closure};
 use web_sys::{HtmlElement, HtmlSelectElement, HtmlDivElement, HtmlOptionElement, window};
 
-use crate::{dom::{create_element, create_html_element}, tournament::{StageId, TournamentId}, model::Model, ui::{create_callback, UiElementId, UiElement, EventList, Event}};
+use crate::{dom::{create_element, create_html_element}, model::tournament::{StageId, TournamentId}, model::Model, ui::{create_callback, UiElementId, UiElement, EventList, Event}};
 
 //TODO: reorder tournaments and stages
 //TODO: rename tournaments and stages

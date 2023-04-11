@@ -2,7 +2,7 @@ use log::error;
 use wasm_bindgen::{JsCast, prelude::Closure};
 use web_sys::{HtmlTableElement, HtmlTableRowElement, HtmlTableSectionElement, HtmlButtonElement, window};
 
-use crate::{dom::{create_element}, tournament::{StageId, TournamentId, Stage, Match, MatchId}, model::Model, ui::{create_callback, UiElementId, UiElement, EventList, Event}};
+use crate::{dom::{create_element}, model::tournament::{StageId, TournamentId, Stage, Match, MatchId}, model::Model, ui::{create_callback, UiElementId, UiElement, EventList, Event}};
 
 //TODO: swap blue/red side for a match
 
@@ -64,6 +64,9 @@ impl MatchList {
     }
 
     fn refresh(&mut self, model: &Model) {
+        self.dom_table.style().set_property("display",
+            if self.tournament_id.is_some() && self.stage_id.is_some() { "block" } else { "none" }).expect("Failed to set style");
+
         while self.body.rows().length() > 0 {
             self.body.delete_row(0).expect("Failed to delete row");
             //TODO: remove delete closures etc?

@@ -1,20 +1,16 @@
 use std::{cell::RefCell, ops::DerefMut};
 
 use dom::create_html_element;
-use match_list::MatchList;
+use ui::bracket_view::BracketView;
+use ui::match_list::MatchList;
 use model::Model;
-use outline::Outline;
-use round_robin_standings::RoundRobinStandings;
-use round_robin_table::RoundRobinTable;
+use ui::outline::Outline;
+use ui::round_robin_standings::RoundRobinStandings;
+use ui::round_robin_table::RoundRobinTable;
 use ui::{Ui, UiElement};
 use web_sys::{window};
 
-mod tournament;
 mod dom;
-mod round_robin_table;
-mod round_robin_standings;
-mod match_list;
-mod outline;
 mod model;
 mod ui;
 
@@ -84,5 +80,11 @@ fn main() {
         let match_list = MatchList::new(ui.get_next_id(), model, outline_id);
         window().expect("Missing window").document().expect("Missing document").body().expect("Missing body").append_child(&match_list.get_dom_table()).expect("Failed to insert table");
         ui.add_element(UiElement::MatchList(match_list));
+
+        window().expect("Missing window").document().expect("Missing document").body().expect("Missing body").append_child(&create_html_element("hr")).expect("Failed to add element");
+
+        let match_list = BracketView::new(ui.get_next_id(), model, outline_id);
+        window().expect("Missing window").document().expect("Missing document").body().expect("Missing body").append_child(&match_list.get_dom_root()).expect("Failed to insert table");
+        ui.add_element(UiElement::BracketView(match_list));
     });
 }
