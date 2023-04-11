@@ -118,6 +118,16 @@ impl Model {
         }
     }
 
+    pub fn rename_tournament(&mut self, tournament_id: TournamentId, new_name: &str) -> Result<(), ()> {
+        if let Some(t) = self.tournaments.get_mut(&tournament_id) {
+            t.name = new_name.to_string();
+            self.changed_tournaments.push(tournament_id);
+            Ok(())
+        } else {
+            Err(())
+        }
+    }
+
     pub fn add_stage_round_robin(&mut self, tournament_id: TournamentId, name: String) -> Option<StageId> {
         let id = self.get_next_id();
         if let Some(t) = self.tournaments.get_mut(&tournament_id) {
@@ -144,6 +154,16 @@ impl Model {
 
     pub fn delete_stage(&mut self, tournament_id: TournamentId, stage_id: StageId) -> Result<(), ()> {
         if self.tournaments.get_mut(&tournament_id).and_then(|t| t.stages.shift_remove(&stage_id)).is_some() {
+            self.changed_tournaments.push(tournament_id);
+            Ok(())
+        } else {
+            Err(())
+        }
+    }
+
+    pub fn rename_stage(&mut self, tournament_id: TournamentId, stage_id: StageId, new_name: &str) -> Result<(), ()> {
+        if let Some(s) = self.tournaments.get_mut(&tournament_id).and_then(|t| t.stages.get_mut(&stage_id)) {
+            s.name = new_name.to_string();
             self.changed_tournaments.push(tournament_id);
             Ok(())
         } else {

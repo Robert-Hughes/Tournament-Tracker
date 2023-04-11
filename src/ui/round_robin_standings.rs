@@ -8,6 +8,7 @@ use crate::{dom::{create_element, create_html_element}, model::tournament::{Stag
 //TODO: show total games played too
 //TODO: show position (1st, 2nd etc), including ties
 //TODO: show 'trend' e.g. last 5 game score, or full list of 'WLLWLLWL'. Maybe show which teams against too?
+//TODO: rename teams
 
 pub struct RoundRobinStandings {
     id: UiElementId,

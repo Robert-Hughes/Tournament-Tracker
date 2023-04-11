@@ -5,7 +5,6 @@ use web_sys::{HtmlElement, HtmlSelectElement, HtmlDivElement, HtmlOptionElement,
 use crate::{dom::{create_element, create_html_element}, model::tournament::{StageId, TournamentId}, model::Model, ui::{create_callback, UiElementId, UiElement, EventList, Event}};
 
 //TODO: reorder tournaments and stages
-//TODO: rename tournaments and stages
 
 pub struct Outline {
     id: UiElementId,
@@ -56,6 +55,10 @@ impl Outline {
         delete_button.set_inner_text("Delete");
         div.append_child(&delete_button).expect("Failed to append child");
 
+        let rename_button: HtmlElement = create_html_element("button");
+        rename_button.set_inner_text("Rename");
+        div.append_child(&rename_button).expect("Failed to append child");
+
         let mut result = Outline { id, div, select,
             selected_tournament_id: None, selected_stage_id: None, selection_change_event_pending: false, closures: vec![] };
 
@@ -89,6 +92,14 @@ impl Outline {
             }
         });
         delete_button.set_onclick(Some(click_closure.as_ref().unchecked_ref()));
+        result.closures.push(click_closure); // Needs to be kept alive
+
+        let click_closure = create_callback(move |model, ui| {
+            if let Some(UiElement::Outline(this)) = ui.get_element(id) {
+                this.on_rename_button_click(model);
+            }
+        });
+        rename_button.set_onclick(Some(click_closure.as_ref().unchecked_ref()));
         result.closures.push(click_closure); // Needs to be kept alive
 
         let change_closure = create_callback(move |_model, ui| {
@@ -191,6 +202,28 @@ impl Outline {
                 if window().unwrap().confirm_with_message(&format!("Are you sure you want to delete tournament '{tournament_name}'? All data for this tournament will be lost!!")) == Ok(true) {
                     if let Err(_) = model.delete_tournament(t) {
                         error!("Failed to delete tournament");
+                    }
+                }
+            }
+            _ => (),
+        }
+    }
+
+    fn on_rename_button_click(&self, model: &mut Model) {
+        match (self.selected_tournament_id, self.selected_stage_id) {
+            (Some(t), Some(s)) => {
+                let stage_name = model.get_stage(t, s).map(|s| s.name.clone()).unwrap_or("".to_string());
+                if let Ok(Some(new_name)) = window().unwrap().prompt_with_message_and_default(&format!("Enter new name for stage '{stage_name}':"), &stage_name) {
+                    if let Err(_) = model.rename_stage(t, s, &new_name) {
+                        error!("Failed to rename tournament");
+                    }
+                }
+            }
+            (Some(t), None) => {
+                let tournament_name = model.get_tournament(t).map(|t| t.name.clone()).unwrap_or("".to_string());
+                if let Ok(Some(new_name)) = window().unwrap().prompt_with_message_and_default(&format!("Enter new name for tournament '{tournament_name}':"), &tournament_name) {
+                    if let Err(_) = model.rename_tournament(t, &new_name) {
+                        error!("Failed to rename tournament");
                     }
                 }
             }
