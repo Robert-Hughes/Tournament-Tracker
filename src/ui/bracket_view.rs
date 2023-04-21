@@ -1,9 +1,8 @@
-use indexmap::IndexMap;
-use log::{error, debug};
-use wasm_bindgen::{JsCast, prelude::Closure};
-use web_sys::{HtmlTableElement, HtmlTableRowElement, HtmlTableSectionElement, HtmlElement, HtmlDivElement, MouseEvent, HtmlButtonElement};
+use log::{error};
+use wasm_bindgen::{JsCast};
+use web_sys::{HtmlElement, HtmlDivElement, MouseEvent, HtmlButtonElement};
 
-use crate::{dom::{create_element}, model::tournament::{StageId, TournamentId, Team, Match, TeamId, StageKind, FixtureId}, model::Model, ui::{UiElement, UiElementId, create_callback, EventList, Event}};
+use crate::{dom::{create_element}, model::tournament::{StageId, TournamentId, StageKind, FixtureId}, model::Model, ui::{UiElement, UiElementId, create_callback, EventList, Event}};
 
 use super::create_callback_with_arg;
 
@@ -18,6 +17,7 @@ pub struct BracketView {
 
     dom_root: HtmlElement,
 
+    #[allow(dyn_drop)]
     closures: Vec<Box<dyn Drop>>,
 }
 
@@ -62,6 +62,7 @@ impl BracketView {
         }));
         dom_root.set_ondblclick(Some(dblclick_closure.as_ref().as_ref().unchecked_ref()));
 
+        #[allow(dyn_drop)]
         let mut closures: Vec<Box<dyn Drop>> = vec![];
         closures.push(dblclick_closure); // Needs to be kept alive
 
