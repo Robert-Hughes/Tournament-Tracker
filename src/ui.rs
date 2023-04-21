@@ -1,5 +1,6 @@
 use indexmap::IndexMap;
 use indexmap::indexmap;
+use wasm_bindgen::convert::FromWasmAbi;
 use wasm_bindgen::prelude::Closure;
 
 use match_list::MatchList;
@@ -169,6 +170,16 @@ pub fn create_callback<F: FnMut(&mut Model, &mut Ui) -> () + 'static>(mut f: F) 
     Closure::<dyn FnMut()>::new(move || {
         with_globals(|m, u| {
             f(m, u);
+            m.process_updates(u);
+            u.process_events(m);
+        });
+    })
+}
+
+pub fn create_callback_with_arg<T1: FromWasmAbi + 'static, F: FnMut(&mut Model, &mut Ui, T1) -> () + 'static>(mut f: F) -> Closure<dyn FnMut(T1)> {
+    Closure::<dyn FnMut(T1)>::new(move |a1| {
+        with_globals(|m, u| {
+            f(m, u, a1);
             m.process_updates(u);
             u.process_events(m);
         });
