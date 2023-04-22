@@ -3,4 +3,5 @@
     min-width: 200px;
     min-height: 200px;
     background-color: lightgray;
+    user-select: none; /* Prevent weird selections when dragging fixtures */
 }

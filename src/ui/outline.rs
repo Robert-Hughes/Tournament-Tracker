@@ -233,6 +233,7 @@ impl Outline {
 
     pub fn get_events(&mut self) -> EventList {
         if self.selection_change_event_pending {
+            self.selection_change_event_pending = false;
             EventList::single(Event::SelectedTournamentAndStageChanged { source: self.id, new_tournament_id: self.selected_tournament_id, new_stage_id: self.selected_stage_id })
         } else {
             EventList::new()

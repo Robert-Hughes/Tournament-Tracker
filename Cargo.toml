@@ -11,7 +11,8 @@ web-sys = { version = "0.3.61", features=["Window", "Document", "Element", "Html
     "HtmlOptionElement",
     "DomStringMap",
     "CssStyleDeclaration",
-    "MouseEvent"] }
+    "MouseEvent",
+    "DomRect"] }
 console_log = { version = "1.0.0", features=["color"] }
 log = "0.4.17"
 indexmap = { version = "1.9.3", features=["serde"] }
