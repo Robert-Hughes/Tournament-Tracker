@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use log::{error, debug};
 use wasm_bindgen::{JsCast};
-use web_sys::{HtmlElement, HtmlDivElement, MouseEvent, HtmlButtonElement, DomRect, window};
+use web_sys::{HtmlElement, HtmlDivElement, MouseEvent, HtmlButtonElement, DomRect, window, HtmlSelectElement};
 
-use crate::{dom::{create_element}, model::tournament::{StageId, TournamentId, StageKind, FixtureId}, model::Model, ui::{UiElement, UiElementId, create_callback, EventList, Event}};
+use crate::{dom::{create_element}, model::tournament::{StageId, TournamentId, StageKind, FixtureId, FixtureTeam}, model::Model, ui::{UiElement, UiElementId, create_callback, EventList, Event}};
 
 use super::create_callback_with_arg;
 
@@ -17,6 +17,7 @@ pub struct BracketView {
     linked_outline_id: UiElementId,
 
     dom_root: HtmlElement,
+    canvas: HtmlDivElement,
     fixture_divs: HashMap<FixtureId, HtmlDivElement>,
 
     #[allow(dyn_drop)]
@@ -60,9 +61,12 @@ impl BracketView {
 
     pub fn new(id: UiElementId, model: &Model, linked_outline_id: UiElementId) -> BracketView {
         let dom_root = create_element::<HtmlElement>("div");
-        dom_root.set_class_name("bracket-view");
         dom_root.set_inner_text("Bracket view!");
-        dom_root.style().set_property("position", "relative").expect("Failed to set property"); // For children to be absolutely positioned relative to this.
+
+        let canvas = create_element::<HtmlDivElement>("div");
+        canvas.set_class_name("bracket-view-canvas");
+        canvas.style().set_property("position", "relative").expect("Failed to set property"); // For children to be absolutely positioned relative to this.
+        dom_root.append_child(&canvas).expect("Failed to append child");
 
         #[allow(dyn_drop)]
         let mut closures: Vec<Box<dyn Drop>> = vec![];
@@ -72,7 +76,7 @@ impl BracketView {
                 this.on_background_dblclick(model, e);
             }
         }));
-        dom_root.set_ondblclick(Some(dblclick_closure.as_ref().as_ref().unchecked_ref()));
+        canvas.set_ondblclick(Some(dblclick_closure.as_ref().as_ref().unchecked_ref()));
         closures.push(dblclick_closure); // Needs to be kept alive
 
         let mousemove_closure = Box::new(create_callback_with_arg(move |model, ui, e| {
@@ -80,7 +84,7 @@ impl BracketView {
                 this.on_background_mousemove(model, e);
             }
         }));
-        dom_root.set_onmousemove(Some(mousemove_closure.as_ref().as_ref().unchecked_ref()));
+        canvas.set_onmousemove(Some(mousemove_closure.as_ref().as_ref().unchecked_ref()));
         closures.push(mousemove_closure); // Needs to be kept alive
 
         let mouseup_closure = Box::new(create_callback_with_arg(move |model, ui, e| {
@@ -88,12 +92,23 @@ impl BracketView {
                 this.on_background_mouseup(model, e);
             }
         }));
-        dom_root.set_onmouseup(Some(mouseup_closure.as_ref().as_ref().unchecked_ref()));
+        canvas.set_onmouseup(Some(mouseup_closure.as_ref().as_ref().unchecked_ref()));
         closures.push(mouseup_closure); // Needs to be kept alive
 
 
+        let new_fixture_controls = create_element::<HtmlElement>("div");
+        new_fixture_controls.set_inner_text("Double-click to add new fixture with these settings: ");
+        let new_fixture_team_a_select = create_element::<HtmlSelectElement>("select");
+        // new_fixture_team_a_select.options().add_with_html_option_element(element)
+        new_fixture_controls.append_child(&new_fixture_team_a_select).expect("Failed to append child");
+        let new_fixture_team_b_select = create_element::<HtmlSelectElement>("select");
+        new_fixture_controls.append_child(&new_fixture_team_b_select).expect("Failed to append child");
 
-        let mut result = BracketView { id, tournament_id: None, stage_id: None, linked_outline_id, dom_root, fixture_divs: HashMap::<FixtureId, HtmlDivElement>::new(), closures,
+
+        dom_root.append_child(&new_fixture_controls).expect("Failed to append child");
+
+        let mut result = BracketView { id, tournament_id: None, stage_id: None, linked_outline_id, dom_root, canvas,
+            fixture_divs: HashMap::<FixtureId, HtmlDivElement>::new(), closures,
             current_drag: None };
 
         result.refresh(model);
@@ -113,7 +128,7 @@ impl BracketView {
         self.dom_root.style().set_property("display",
             if show { "block" } else { "none" }).expect("Failed to set style");
 
-        self.dom_root.set_inner_html("");
+        self.canvas.set_inner_html("");
         //TODO: delete closures?
 
         self.fixture_divs.clear();
@@ -152,7 +167,7 @@ impl BracketView {
                         drag_handle.set_onmousedown(Some(mousedown_closure.as_ref().as_ref().unchecked_ref()));
                         self.closures.push(mousedown_closure); // Needs to be kept alive
 
-                        self.dom_root.append_child(&new_div).expect("Failed to append child");
+                        self.canvas.append_child(&new_div).expect("Failed to append child");
 
                         self.fixture_divs.insert(fid, new_div);
                     }
@@ -163,7 +178,7 @@ impl BracketView {
 
     fn on_background_dblclick(&self, model: &mut Model, e: MouseEvent) {
         if let (Some(tournament_id), Some(stage_id)) = (self.tournament_id, self.stage_id) {
-            if let None = model.add_fixture(tournament_id, stage_id, (e.offset_x(), e.offset_y())) {
+            if let None = model.add_fixture(tournament_id, stage_id, (e.offset_x(), e.offset_y()), FixtureTeam::Fixed(0), FixtureTeam::Fixed(0)) {
                 error!("Failed to add fixture");
             }
         }
@@ -197,12 +212,12 @@ impl BracketView {
                 // as we receive the mousemove event via bubbling, so e.target will be the child element, and e.offsetX/Y will be relative to that instead.
               //  let e_target = e.target().and_then(|t| t.dyn_into::<HtmlElement>().ok());
               //  let target_rect =  e_target.as_ref().map_or(DomRect::new().unwrap(), |t| t.get_bounding_client_rect());
-                let root_rect = self.dom_root.get_bounding_client_rect();
-                // let x = e.offset_x() as f64 + target_rect.left() - root_rect.left();
-                // let y = e.offset_y() as f64 + target_rect.top() - root_rect.top();
-                let x = e.client_x() as f64 - root_rect.left() - drag_info.start_offset.0;
-                let y = e.client_y() as f64 - root_rect.top() - drag_info.start_offset.1;
-                // debug!("target rect = {},{}. root rect = {},{}. updated to {x} {y}", target_rect.left(), target_rect.top(), root_rect.left(), root_rect.top());
+                let canvas_rect = self.canvas.get_bounding_client_rect();
+                // let x = e.offset_x() as f64 + target_rect.left() - canvas_rect.left();
+                // let y = e.offset_y() as f64 + target_rect.top() - canvas_rect.top();
+                let x = e.client_x() as f64 - canvas_rect.left() - drag_info.start_offset.0;
+                let y = e.client_y() as f64 - canvas_rect.top() - drag_info.start_offset.1;
+                // debug!("target rect = {},{}. root rect = {},{}. updated to {x} {y}", target_rect.left(), target_rect.top(), canvas_rect.left(), canvas_rect.top());
 
                 fixture_div.style().set_property("left", &x.to_string()).expect("Failed to set property");
                 fixture_div.style().set_property("top", &y.to_string()).expect("Failed to set property");
@@ -211,10 +226,19 @@ impl BracketView {
     }
 
     fn on_background_mouseup(&mut self, model: &mut Model, e: MouseEvent) {
-        if let Some(drag_info) = &self.current_drag {
-            if let Some(fixture_div) = self.fixture_divs.get(&drag_info.fixture_id) {
-                self.current_drag = None;
-                //TODO: save the new position in the model
+        if let (Some(tournament_id), Some(stage_id)) = (self.tournament_id, self.stage_id) {
+            if let Some(drag_info) = &self.current_drag {
+                let fixture_id = drag_info.fixture_id;
+                if let Some(fixture_div) = self.fixture_divs.get(&fixture_id) {
+                    let canvas_rect = self.canvas.get_bounding_client_rect();
+                    let x = e.client_x() as f64 - canvas_rect.left() - drag_info.start_offset.0;
+                    let y = e.client_y() as f64 - canvas_rect.top() - drag_info.start_offset.1;
+
+                    self.current_drag = None;
+                    if let Err(_) = model.set_fixture_layout(tournament_id, stage_id, fixture_id, (x as i32, y as i32)) {
+                        error!("Failed to update fixture");
+                    }
+                }
             }
         }
     }

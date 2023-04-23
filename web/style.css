@@ -1,4 +1,4 @@
-.bracket-view {
+.bracket-view-canvas {
     /* Set a minimum size so that a new stage with no fixtures still has some area that can be clicked on to add new fixtures */
     min-width: 200px;
     min-height: 200px;

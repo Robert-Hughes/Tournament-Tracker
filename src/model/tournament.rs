@@ -69,20 +69,18 @@ pub struct Fixture {
     pub match_id: Option<MatchId>,
     /// If the team(s) playing in this fixture are determined by the results of a previous fixture,
     /// that is recorded here. E.g. in an elimination bracket the winner will advance to the next fixture.
-    pub source_a: Option<FixtureSource>,
-    pub source_b: Option<FixtureSource>,
-}
-
-/// Describes the winner or loser of another fixture.
-#[derive(Serialize, Deserialize, Debug)]
-pub struct FixtureSource {
-    pub fixture_id: FixtureId,
-    pub which_outcome: Outcome,
+    pub team_a: FixtureTeam,
+    pub team_b: FixtureTeam,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub enum Outcome {
-    Winner, Loser
+pub enum FixtureTeam {
+    /// The team playing in this fixture is fixed, i.e. pre-determined and not based on the result of another fixture.
+    Fixed(TeamId),
+    /// The team playing in this fixture is the winner of a previous fixture in the stage.
+    Winner(FixtureId),
+    /// The team playing in this fixture is the loser of a previous fixture in the stage.
+    Loser(FixtureId),
 }
 
 impl Tournament {

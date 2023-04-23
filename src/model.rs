@@ -15,6 +15,7 @@ use crate::model::{tournament::{TournamentId, Tournament, StageId, Stage, TeamId
 
 use self::tournament::Fixture;
 use self::tournament::FixtureId;
+use self::tournament::FixtureTeam;
 use self::tournament::StageKind;
 
 mod model_backwards_compat;
@@ -243,14 +244,28 @@ impl Model {
         }
     }
 
-    pub fn add_fixture(&mut self, tournament_id: TournamentId, stage_id: StageId, layout: (i32, i32)) -> Option<FixtureId> {
+    pub fn add_fixture(&mut self, tournament_id: TournamentId, stage_id: StageId, layout: (i32, i32), team_a: FixtureTeam, team_b: FixtureTeam) -> Option<FixtureId> {
         let id = self.get_next_id();
         if let Some(StageKind::Bracket { fixtures }) = self.tournaments.get_mut(&tournament_id).and_then(|t| t.stages.get_mut(&stage_id)).and_then(|s| Some(&mut s.kind)) {
-            fixtures.insert(id, Fixture { id, layout, match_id: None, source_a: None, source_b: None });
+            fixtures.insert(id, Fixture { id, layout, match_id: None, team_a, team_b });
             self.changed_tournaments.push(tournament_id);
             return Some(id)
         }
         return None;
+    }
+
+    pub fn set_fixture_layout(&mut self, tournament_id: TournamentId, stage_id: StageId, fixture_id: FixtureId, layout: (i32, i32)) -> Result<(), ()> {
+        if let Some(StageKind::Bracket { fixtures }) = self.tournaments.get_mut(&tournament_id).and_then(|t| t.stages.get_mut(&stage_id)).and_then(|s| Some(&mut s.kind)) {
+            if let Some(f) = fixtures.get_mut(&fixture_id) {
+                f.layout = layout;
+                self.changed_tournaments.push(tournament_id);
+                Ok(())
+            } else {
+                Err(())
+            }
+        } else {
+            Err(())
+        }
     }
 
     pub fn delete_fixture(&mut self, tournament_id: TournamentId, stage_id: StageId, fixture_id: FixtureId) -> Result<(), ()> {
