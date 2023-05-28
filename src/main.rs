@@ -46,6 +46,7 @@ pub fn with_globals<F: FnOnce(&mut Model, &mut Ui) -> ()>(f: F) {
 }
 
 fn main() {
+    console_error_panic_hook::set_once();
     console_log::init_with_level(log::Level::Debug).expect("Failed to init logging");
 
     with_globals(|model, ui| {

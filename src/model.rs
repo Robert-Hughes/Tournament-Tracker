@@ -221,6 +221,7 @@ impl Model {
 
     pub fn delete_match(&mut self, tournament_id: TournamentId, stage_id: StageId, match_id: MatchId) -> Result<(), ()> {
         if let Some(s) = self.tournaments.get_mut(&tournament_id).and_then(|t| t.stages.get_mut(&stage_id)) {
+            //TODO: what about any fixtures that were linked to this match?
             if s.matches.shift_remove(&match_id).is_none() {
                 return Err(());
             }
@@ -270,6 +271,7 @@ impl Model {
 
     pub fn delete_fixture(&mut self, tournament_id: TournamentId, stage_id: StageId, fixture_id: FixtureId) -> Result<(), ()> {
         if let Some(StageKind::Bracket { fixtures }) = self.tournaments.get_mut(&tournament_id).and_then(|t| t.stages.get_mut(&stage_id)).and_then(|s| Some(&mut s.kind)) {
+            //TODO: what about other fixtures that were linked to this one?
             if fixtures.shift_remove(&fixture_id).is_none() {
                 return Err(());
             }

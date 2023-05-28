@@ -3,6 +3,8 @@ use indexmap::indexmap;
 use serde::Deserialize;
 use serde::Serialize;
 
+use super::Model;
+
 // These types are all public with public fields, i.e. no encapsulation.
 // The Model handles all that. Nobody outside the Model can get a mutable reference
 // to the data here so can't modify it incorrectly.
@@ -128,6 +130,16 @@ impl Match {
             std::cmp::Ordering::Less => Some(self.team_a),
             std::cmp::Ordering::Equal => None,
             std::cmp::Ordering::Greater => Some(self.team_b),
+        }
+    }
+}
+
+impl FixtureTeam {
+    pub fn to_pretty_desc(&self, stage: &Stage) -> String {
+        match self {
+            FixtureTeam::Fixed(t) => stage.teams.get(t).and_then(|t| Some(t.name.clone())).unwrap_or("???".to_string()),
+            FixtureTeam::Winner(f) => format!("Winner of fixture {f}"),
+            FixtureTeam::Loser(f) => format!("Loser of fixture {f}"),
         }
     }
 }
