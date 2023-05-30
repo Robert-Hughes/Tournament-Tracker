@@ -15,6 +15,7 @@ use crate::model::{tournament::{TournamentId, Tournament, StageId, Stage, TeamId
 
 use self::tournament::Fixture;
 use self::tournament::FixtureId;
+use self::tournament::FixtureInput;
 use self::tournament::FixtureTeam;
 use self::tournament::StageKind;
 
@@ -42,7 +43,7 @@ impl Model {
     // The version is stored separately, so that we don't need to deserialize the model in order to check the version.
     // Beware if this key name is changed, we won't be able to load old data!!
     const LOCAL_STORAGE_VERSION_KEY: &str = "tournament-tracker-version";
-    const VERSION: i32 = 2;
+    const VERSION: i32 = 3;
     const LOCAL_STORAGE_MODEL_KEY: &str = "tournament-tracker-model";
 
     pub fn new() -> Model {
@@ -58,7 +59,10 @@ impl Model {
         let res = match storage.get_item(Model::LOCAL_STORAGE_VERSION_KEY) {
             Ok(Some(x)) if x == Model::VERSION.to_string() => {
                 Self::load_current_version(storage)
-            }
+            },
+            Ok(Some(x)) if &x == "2" => {
+                model_backwards_compat::v2::load_and_upgrade(storage)
+            },
             _ => {
                 // Assume is old version before we added versioning
                 model_backwards_compat::v1::load_and_upgrade(storage)
@@ -259,6 +263,23 @@ impl Model {
         if let Some(StageKind::Bracket { fixtures }) = self.tournaments.get_mut(&tournament_id).and_then(|t| t.stages.get_mut(&stage_id)).and_then(|s| Some(&mut s.kind)) {
             if let Some(f) = fixtures.get_mut(&fixture_id) {
                 f.layout = layout;
+                self.changed_tournaments.push(tournament_id);
+                Ok(())
+            } else {
+                Err(())
+            }
+        } else {
+            Err(())
+        }
+    }
+
+    pub fn set_fixture_input(&mut self, tournament_id: TournamentId, stage_id: StageId, fixture_id: FixtureId, input: FixtureInput, team: FixtureTeam) -> Result<(), ()> {
+        if let Some(StageKind::Bracket { fixtures }) = self.tournaments.get_mut(&tournament_id).and_then(|t| t.stages.get_mut(&stage_id)).and_then(|s| Some(&mut s.kind)) {
+            if let Some(f) = fixtures.get_mut(&fixture_id) {
+                match input {
+                    FixtureInput::TeamA => f.team_a = team,
+                    FixtureInput::TeamB => f.team_b = team,
+                }
                 self.changed_tournaments.push(tournament_id);
                 Ok(())
             } else {

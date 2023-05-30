@@ -4,11 +4,9 @@ use log::{error, debug};
 use wasm_bindgen::{JsCast};
 use web_sys::{ResizeObserver, HtmlElement, HtmlDivElement, MouseEvent, HtmlButtonElement, DomRect, window, HtmlSelectElement, HtmlOptionElement, HtmlTemplateElement, Element, HtmlCanvasElement, CanvasRenderingContext2d};
 
-use crate::{dom::{create_element}, model::tournament::{StageId, TournamentId, StageKind, FixtureId, FixtureTeam}, model::Model, ui::{UiElement, UiElementId, create_callback, EventList, Event}};
+use crate::{dom::{create_element}, model::tournament::{StageId, TournamentId, StageKind, FixtureId, FixtureTeam, Outcome, FixtureInput}, model::Model, ui::{UiElement, UiElementId, create_callback, EventList, Event}};
 
 use super::create_callback_with_arg;
-
-//TODO: drag fixture around
 
 pub struct BracketView {
     id: UiElementId,
@@ -26,18 +24,14 @@ pub struct BracketView {
     closures: Vec<Box<dyn Drop>>,
 
     current_drag: Option<DragInfo>,
-    selected_fixture_outputs: Vec<FixtureOutput>,
+    current_connecting_line: Option<ConnectingLine>,
 }
 
-#[derive(PartialEq)]
-struct FixtureOutput {
-    fixture_id: FixtureId,
-    outcome: Outcome,
-}
-
-#[derive(PartialEq)]
-enum Outcome {
-    Winner, Loser,
+struct ConnectingLine {
+    start_fixture_id: FixtureId,
+    start_outcome: Outcome,
+    dragging_end: (i32, i32),
+    end_fixture_input: Option<(FixtureId, FixtureInput)>
 }
 
 struct DragInfo {
@@ -110,7 +104,7 @@ impl BracketView {
         closures.push(dblclick_closure); // Needs to be kept alive
 
         let mousemove_closure = Box::new(create_callback_with_arg(move |model, ui, e| {
-            if let Some(UiElement::BracketView(this)) = ui.get_element(id) {
+            if let Some(UiElement::BracketView(this)) = ui.get_element_mut(id) {
                 this.on_background_mousemove(model, e);
             }
         }));
@@ -128,7 +122,7 @@ impl BracketView {
 
         let mut result = BracketView { id, tournament_id: None, stage_id: None, linked_outline_id, dom_root, canvas_container, canvas, canvas_context,
             fixture_divs: HashMap::<FixtureId, HtmlDivElement>::new(), closures,
-            current_drag: None, selected_fixture_outputs: vec![] };
+            current_drag: None, current_connecting_line: None };
 
         result.refresh(model);
 
@@ -203,23 +197,55 @@ impl BracketView {
                         drag_handle.set_onmousedown(Some(mousedown_closure.as_ref().as_ref().unchecked_ref()));
                         self.closures.push(mousedown_closure); // Needs to be kept alive
 
-                        let winner_handle: HtmlElement = new_div.query_selector("td[name=winner-handle]").expect("Missing entry").expect("Missing entry").dyn_into().expect("Cast failed");
-                        let click_closure = Box::new(create_callback_with_arg(move |model, ui, e| {
+                        let team_a_handle: HtmlElement = new_div.query_selector("span[name=team-a]").expect("Missing entry").expect("Missing entry").dyn_into().expect("Cast failed");
+                        let mouseenter_closure = Box::new(create_callback(move |model, ui| {
                             if let Some(UiElement::BracketView(this)) = ui.get_element_mut(id) {
-                                this.on_fixture_winner_handle_click(model, fid, e);
+                                this.on_fixture_input_mouseenter(model, fid, FixtureInput::TeamA);
                             }
                         }));
-                        winner_handle.set_onmousedown(Some(click_closure.as_ref().as_ref().unchecked_ref()));
-                        self.closures.push(click_closure); // Needs to be kept alive
+                        team_a_handle.set_onmouseenter(Some(mouseenter_closure.as_ref().as_ref().unchecked_ref()));
+                        self.closures.push(mouseenter_closure); // Needs to be kept alive
+                        let mouseleave_closure = Box::new(create_callback(move |model, ui| {
+                            if let Some(UiElement::BracketView(this)) = ui.get_element_mut(id) {
+                                this.on_fixture_input_mouseleave(model, fid, FixtureInput::TeamA);
+                            }
+                        }));
+                        team_a_handle.set_onmouseleave(Some(mouseleave_closure.as_ref().as_ref().unchecked_ref()));
+                        self.closures.push(mouseleave_closure); // Needs to be kept alive
+
+                        let team_b_handle: HtmlElement = new_div.query_selector("span[name=team-b]").expect("Missing entry").expect("Missing entry").dyn_into().expect("Cast failed");
+                        let mouseenter_closure = Box::new(create_callback(move |model, ui| {
+                            if let Some(UiElement::BracketView(this)) = ui.get_element_mut(id) {
+                                this.on_fixture_input_mouseenter(model, fid, FixtureInput::TeamB);
+                            }
+                        }));
+                        team_b_handle.set_onmouseenter(Some(mouseenter_closure.as_ref().as_ref().unchecked_ref()));
+                        self.closures.push(mouseenter_closure); // Needs to be kept alive
+                        let mouseleave_closure = Box::new(create_callback(move |model, ui| {
+                            if let Some(UiElement::BracketView(this)) = ui.get_element_mut(id) {
+                                this.on_fixture_input_mouseleave(model, fid, FixtureInput::TeamB);
+                            }
+                        }));
+                        team_b_handle.set_onmouseleave(Some(mouseleave_closure.as_ref().as_ref().unchecked_ref()));
+                        self.closures.push(mouseleave_closure); // Needs to be kept alive
+
+                        let winner_handle: HtmlElement = new_div.query_selector("td[name=winner-handle]").expect("Missing entry").expect("Missing entry").dyn_into().expect("Cast failed");
+                        let mousedown_closure = Box::new(create_callback(move |model, ui| {
+                            if let Some(UiElement::BracketView(this)) = ui.get_element_mut(id) {
+                                this.on_fixture_outcome_handle_mousedown(model, fid, Outcome::Winner);
+                            }
+                        }));
+                        winner_handle.set_onmousedown(Some(mousedown_closure.as_ref().as_ref().unchecked_ref()));
+                        self.closures.push(mousedown_closure); // Needs to be kept alive
 
                         let loser_handle: HtmlElement = new_div.query_selector("td[name=loser-handle]").expect("Missing entry").expect("Missing entry").dyn_into().expect("Cast failed");
-                        let click_closure = Box::new(create_callback_with_arg(move |model, ui, e| {
+                        let mousedown_closure = Box::new(create_callback(move |model, ui| {
                             if let Some(UiElement::BracketView(this)) = ui.get_element_mut(id) {
-                                this.on_fixture_loser_handle_click(model, fid, e);
+                                this.on_fixture_outcome_handle_mousedown(model, fid, Outcome::Loser);
                             }
                         }));
-                        loser_handle.set_onmousedown(Some(click_closure.as_ref().as_ref().unchecked_ref()));
-                        self.closures.push(click_closure); // Needs to be kept alive
+                        loser_handle.set_onmousedown(Some(mousedown_closure.as_ref().as_ref().unchecked_ref()));
+                        self.closures.push(mousedown_closure); // Needs to be kept alive
 
 
                         self.fixture_divs.insert(fid, new_div);
@@ -238,23 +264,75 @@ impl BracketView {
             if let Some(stage) = model.get_stage(tournament_id, stage_id) {
                 if let StageKind::Bracket { fixtures } = &stage.kind {
                     for (fid, f) in fixtures {
-                        for t in [&f.team_a, &f.team_b] {
-                            match t {
-                                FixtureTeam::Winner(f2) | FixtureTeam::Loser(f2) => {
-                                    if let Some(f2) = fixtures.get(f2) {
-                                        self.canvas_context.begin_path();
-                                        self.canvas_context.move_to(f.layout.0 as f64, f.layout.1 as f64);
-                                        self.canvas_context.line_to(f2.layout.0 as f64, f2.layout.1 as f64);
-                                        self.canvas_context.stroke();
-                                    }
-                                }
-                                _ => (),
+                        let get_start = |ft: &FixtureTeam| {
+                            match ft {
+                                FixtureTeam::Linked { fixture_id: linked_fixture_id, outcome } => Some(self.get_fixture_outcome_handle_rect(*linked_fixture_id, *outcome)),
+                                _ => None
                             }
+                        };
+
+                        if let Some(start) = get_start(&f.team_a) {
+                            let end = self.get_fixture_input_handle_rect(*fid, FixtureInput::TeamA);
+                            self.canvas_context.begin_path();
+                            self.canvas_context.move_to(start.right() as f64, start.top() + start.height() / 2 as f64);
+                            self.canvas_context.line_to(end.left() as f64, end.top() + end.height() / 2 as f64);
+                            self.canvas_context.stroke();
+                        }
+
+                        if let Some(start) = get_start(&f.team_b) {
+                            let end = self.get_fixture_input_handle_rect(*fid, FixtureInput::TeamB);
+                            self.canvas_context.begin_path();
+                            self.canvas_context.move_to(start.right() as f64, start.top() + start.height() / 2 as f64);
+                            self.canvas_context.line_to(end.left() as f64, end.top() + end.height() / 2 as f64);
+                            self.canvas_context.stroke();
                         }
                     }
                 }
+
+                if let Some(connecting_line) = &self.current_connecting_line {
+                    let start = self.get_fixture_outcome_handle_rect(connecting_line.start_fixture_id, connecting_line.start_outcome);
+                    let end = match connecting_line.end_fixture_input {
+                        None => connecting_line.dragging_end,
+                        Some((end_fixture_id, end_fixture_input)) => {
+                            let r = self.get_fixture_input_handle_rect(end_fixture_id, end_fixture_input);
+                            (r.left() as i32, (r.top() + r.height() * 0.5) as i32)
+                        }
+                    };
+
+                    self.canvas_context.begin_path();
+                    self.canvas_context.move_to(start.right() as f64, start.top() + start.height() / 2 as f64);
+                    self.canvas_context.line_to(end.0 as f64, end.1 as f64);
+                    self.canvas_context.stroke();
+                }
             }
         }
+    }
+
+    fn get_fixture_element_rect(&self, fixture_id: FixtureId, element_name: &str) -> DomRect {
+        let canvas_rect = self.canvas_container.get_bounding_client_rect();
+        if let Some(fixture_div) = self.fixture_divs.get(&fixture_id) {
+            let element = fixture_div.query_selector(&format!("[name={element_name}]")).expect("Missing entry").expect("Missing entry");
+            let client_rect = element.get_bounding_client_rect();
+            DomRect::new_with_x_and_y_and_width_and_height(client_rect.x() - canvas_rect.x(),
+                client_rect.y() - canvas_rect.y(), client_rect.width(), client_rect.height()).expect("Failed to make DomRect")
+        } else {
+            DomRect::new().expect("Failed to make DomRect")
+        }
+    }
+
+    fn get_fixture_input_handle_rect(&self, fixture_id: FixtureId, input: FixtureInput) -> DomRect {
+        let element_name = match input {
+            FixtureInput::TeamA => "team-a",
+            FixtureInput::TeamB => "team-b",
+        };
+        self.get_fixture_element_rect(fixture_id, element_name)
+    }
+    fn get_fixture_outcome_handle_rect(&self, fixture_id: FixtureId, outcome: Outcome) -> DomRect {
+        let element_name = match outcome {
+            Outcome::Winner => "winner-handle",
+            Outcome::Loser => "loser-handle",
+        };
+        self.get_fixture_element_rect(fixture_id, element_name)
     }
 
     fn on_canvas_resize(&self, model: &Model) {
@@ -267,12 +345,7 @@ impl BracketView {
     fn on_background_dblclick(&self, model: &mut Model, e: MouseEvent) {
         if let (Some(tournament_id), Some(stage_id)) = (self.tournament_id, self.stage_id) {
 
-            let team_a = if self.selected_fixture_outputs.len() >= 1 {
-                match self.selected_fixture_outputs[0] {
-                    FixtureOutput { fixture_id, outcome: Outcome::Winner } => FixtureTeam::Winner(fixture_id),
-                    FixtureOutput { fixture_id, outcome: Outcome::Loser } => FixtureTeam::Loser(fixture_id),
-                }
-            } else {
+            let team_a = {
                 // Add a new team to be used as the fixed input for this fixture
                 let team_id = match model.add_team(tournament_id, stage_id, "ABC".to_string()) {
                     Some(t) => t,
@@ -284,12 +357,7 @@ impl BracketView {
                 FixtureTeam::Fixed(team_id)
             };
 
-            let team_b = if self.selected_fixture_outputs.len() >= 2 {
-                match self.selected_fixture_outputs[1] {
-                    FixtureOutput { fixture_id, outcome: Outcome::Winner } => FixtureTeam::Winner(fixture_id),
-                    FixtureOutput { fixture_id, outcome: Outcome::Loser } => FixtureTeam::Loser(fixture_id),
-                }
-            } else {
+            let team_b = {
                 // Add a new team to be used as the fixed input for this fixture
                 let team_id = match model.add_team(tournament_id, stage_id, "ABC".to_string()) {
                     Some(t) => t,
@@ -326,24 +394,47 @@ impl BracketView {
         }
     }
 
-    fn on_background_mousemove(&self, model: &mut Model, e: MouseEvent) {
-        if let Some(drag_info) = &self.current_drag {
+    fn on_fixture_outcome_handle_mousedown(&mut self, model: &mut Model, fixture_id: FixtureId, outcome: Outcome) {
+        self.current_connecting_line = Some(ConnectingLine { start_fixture_id: fixture_id, start_outcome: outcome, dragging_end: (0, 0), end_fixture_input: None });
+    }
+
+    fn on_fixture_input_mouseenter(&mut self, model: &mut Model, fixture_id: FixtureId, input: FixtureInput) {
+        if let Some(connecting_line) = self.current_connecting_line.as_mut() {
+            connecting_line.end_fixture_input = Some((fixture_id, input));
+        }
+    }
+
+    fn on_fixture_input_mouseleave(&mut self, model: &mut Model, fixture_id: FixtureId, input: FixtureInput) {
+        if let Some(connecting_line) = self.current_connecting_line.as_mut() {
+            connecting_line.end_fixture_input = None;
+        }
+    }
+
+    fn on_background_mousemove(&mut self, model: &mut Model, e: MouseEvent) {
+            // Get the cursor position relative to the bracket view
+        // This won't be the same as e.offsetX/Y if we are currently dragging over a child element of the bracket view,
+        // as we receive the mousemove event via bubbling, so e.target will be the child element, and e.offsetX/Y will be relative to that instead.
+        let canvas_rect = self.canvas_container.get_bounding_client_rect();
+        let x = e.client_x() as f64 - canvas_rect.left();
+        let y = e.client_y() as f64 - canvas_rect.top();
+
+         if let Some(drag_info) = &self.current_drag {
             if let Some(fixture_div) = self.fixture_divs.get(&drag_info.fixture_id) {
-                // Get the cursor position relative to the bracket view
-                // This won't be the same as e.offsetX/Y if we are currently dragging over a child element of the bracket view,
-                // as we receive the mousemove event via bubbling, so e.target will be the child element, and e.offsetX/Y will be relative to that instead.
-              //  let e_target = e.target().and_then(|t| t.dyn_into::<HtmlElement>().ok());
-              //  let target_rect =  e_target.as_ref().map_or(DomRect::new().unwrap(), |t| t.get_bounding_client_rect());
-                let canvas_rect = self.canvas_container.get_bounding_client_rect();
-                // let x = e.offset_x() as f64 + target_rect.left() - canvas_rect.left();
-                // let y = e.offset_y() as f64 + target_rect.top() - canvas_rect.top();
-                let x = e.client_x() as f64 - canvas_rect.left() - drag_info.start_offset.0;
-                let y = e.client_y() as f64 - canvas_rect.top() - drag_info.start_offset.1;
                 // debug!("target rect = {},{}. root rect = {},{}. updated to {x} {y}", target_rect.left(), target_rect.top(), canvas_rect.left(), canvas_rect.top());
+                let x = x - drag_info.start_offset.0;
+                let y = y - drag_info.start_offset.1;
 
                 fixture_div.style().set_property("left", &x.to_string()).expect("Failed to set property");
                 fixture_div.style().set_property("top", &y.to_string()).expect("Failed to set property");
+
+                self.redraw_canvas(model);
             }
+        }
+
+        if let Some(connecting_line) = self.current_connecting_line.as_mut() {
+            connecting_line.dragging_end = (x as i32, y as i32);
+
+            self.redraw_canvas(model);
         }
     }
 
@@ -362,45 +453,16 @@ impl BracketView {
                     }
                 }
             }
-        }
-    }
 
-    fn on_fixture_winner_handle_click(&mut self, model: &mut Model, fixture_id: FixtureId, e: MouseEvent) {
-        if !e.shift_key() {
-            self.selected_fixture_outputs.clear();
-            if let Ok(nodes) = self.canvas.query_selector_all("td[name=winner-handle],td[name=loser-handle]") {
-                for i in 0..nodes.length() {
-                    nodes.get(i).expect("Missing item").dyn_into::<HtmlElement>().expect("Failed cast").class_list().remove_1("selected").expect("Failed to remove class");
+            if let Some(connecting_line) = self.current_connecting_line.as_mut() {
+                if let Some((end_fixture_id, end_fixture_input)) = connecting_line.end_fixture_input {
+                    model.set_fixture_input(tournament_id, stage_id, end_fixture_id, end_fixture_input,
+                        FixtureTeam::Linked { fixture_id: connecting_line.start_fixture_id, outcome: connecting_line.start_outcome });
                 }
-            }
-        }
-        let x = FixtureOutput { fixture_id, outcome: Outcome::Winner };
-        if !self.selected_fixture_outputs.contains(&x) {
-            self.selected_fixture_outputs.push(x);
-            if let Some(f) = self.fixture_divs.get(&fixture_id) {
-                if let Ok(Some(x)) = f.query_selector("td[name=winner-handle]") {
-                    x.dyn_into::<HtmlElement>().expect("Failed cast").class_list().add_1("selected").expect("Failed to add class");
-                }
-            }
-        }
-    }
 
-    fn on_fixture_loser_handle_click(&mut self, model: &mut Model, fixture_id: FixtureId, e: MouseEvent) {
-        if !e.shift_key() {
-            self.selected_fixture_outputs.clear();
-            if let Ok(nodes) = self.canvas.query_selector_all("td[name=winner-handle],td[name=loser-handle]") {
-                for i in 0..nodes.length() {
-                    nodes.get(i).expect("Missing item").dyn_into::<HtmlElement>().expect("Failed cast").class_list().remove_1("selected").expect("Failed to remove class");
-                }
-            }
-        }
-        let x = FixtureOutput { fixture_id, outcome: Outcome::Loser };
-        if !self.selected_fixture_outputs.contains(&x) {
-            self.selected_fixture_outputs.push(x);
-            if let Some(f) = self.fixture_divs.get(&fixture_id) {
-                if let Ok(Some(x)) = f.query_selector("td[name=loser-handle]") {
-                    x.dyn_into::<HtmlElement>().expect("Failed cast").class_list().add_1("selected").expect("Failed to add class");
-                }
+                self.current_connecting_line = None;
+
+                self.redraw_canvas(model);
             }
         }
     }

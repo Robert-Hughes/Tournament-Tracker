@@ -79,10 +79,21 @@ pub struct Fixture {
 pub enum FixtureTeam {
     /// The team playing in this fixture is fixed, i.e. pre-determined and not based on the result of another fixture.
     Fixed(TeamId),
-    /// The team playing in this fixture is the winner of a previous fixture in the stage.
-    Winner(FixtureId),
-    /// The team playing in this fixture is the loser of a previous fixture in the stage.
-    Loser(FixtureId),
+    /// The team playing in this fixture is the winner/loser of a previous fixture in the stage.
+    Linked {
+        fixture_id: FixtureId,
+        outcome: Outcome,
+    }
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Copy, Debug)]
+pub enum Outcome {
+    Winner, Loser,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Copy, Debug)]
+pub enum FixtureInput {
+    TeamA, TeamB,
 }
 
 impl Tournament {
@@ -138,8 +149,7 @@ impl FixtureTeam {
     pub fn to_pretty_desc(&self, stage: &Stage) -> String {
         match self {
             FixtureTeam::Fixed(t) => stage.teams.get(t).and_then(|t| Some(t.name.clone())).unwrap_or("???".to_string()),
-            FixtureTeam::Winner(f) => format!("Winner of fixture {f}"),
-            FixtureTeam::Loser(f) => format!("Loser of fixture {f}"),
+            FixtureTeam::Linked{ fixture_id, outcome } => format!("{outcome:?} of fixture {fixture_id}"),
         }
     }
 }
