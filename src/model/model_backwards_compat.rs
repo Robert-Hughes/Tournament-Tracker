@@ -1,6 +1,6 @@
 // Definitions for old versions of the model, used to load old serialized data and upgrade it to new versions.
 
-// V1 (which was unversioned) had a different representation of Matches
+// V1 (which was unversioned) had a different representation of Matches to v2
 pub(crate) mod v1 {
     use indexmap::IndexMap;
     use indexmap::indexmap;
@@ -99,7 +99,7 @@ pub(crate) mod v1 {
     }
 }
 
-// V2 had fixture teams as separate enum variants
+// V2 had fixture teams as separate enum variants whereas v3 has the Outcome enum instead
 pub(crate) mod v2 {
     use indexmap::IndexMap;
     use indexmap::indexmap;

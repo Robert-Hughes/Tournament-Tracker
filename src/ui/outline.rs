@@ -34,6 +34,7 @@ impl Outline {
 
     pub fn new(id: UiElementId, model: &Model) -> Outline {
         let div = create_element::<HtmlDivElement>("div");
+        div.set_class_name("outline");
 
         let select = create_element::<HtmlSelectElement>("select");
         select.set_size(10);

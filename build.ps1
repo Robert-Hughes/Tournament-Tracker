@@ -2,8 +2,6 @@ $ErrorActionPreference = "Stop"
 
 # Build the rust code into a wasm binary
 Write-Output "cargo build..."
-# Needed for ResizeObserver APIs
-$env:RUSTFLAGS="--cfg=web_sys_unstable_apis"
 cargo build --target wasm32-unknown-unknown
 if ($LastExitCode -ne 0) {
     exit

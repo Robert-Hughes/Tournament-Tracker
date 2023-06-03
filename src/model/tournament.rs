@@ -3,8 +3,6 @@ use indexmap::indexmap;
 use serde::Deserialize;
 use serde::Serialize;
 
-use super::Model;
-
 // These types are all public with public fields, i.e. no encapsulation.
 // The Model handles all that. Nobody outside the Model can get a mutable reference
 // to the data here so can't modify it incorrectly.

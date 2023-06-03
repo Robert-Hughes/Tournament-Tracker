@@ -4,6 +4,7 @@ use wasm_bindgen::convert::FromWasmAbi;
 use wasm_bindgen::prelude::Closure;
 
 use match_list::MatchList;
+use web_sys::HtmlElement;
 use crate::model::Model;
 use outline::Outline;
 use round_robin_standings::RoundRobinStandings;
@@ -104,6 +105,16 @@ impl UiElement {
             UiElement::MatchList(x) => x.get_id(),
             UiElement::Outline(x) => x.get_id(),
             UiElement::BracketView(x) => x.get_id(),
+        }
+    }
+
+    pub fn get_root_html_element(&self) -> &HtmlElement {
+        match self {
+            UiElement::RoundRobinTable(x) => x.get_dom_table(),
+            UiElement::RoundRobinStandings(x) => x.get_dom_table(),
+            UiElement::MatchList(x) => x.get_dom_table(),
+            UiElement::Outline(x) => x.get_div(),
+            UiElement::BracketView(x) => x.get_dom_root(),
         }
     }
 

@@ -1,3 +1,18 @@
+body {
+    margin: 0px;
+    display: flex;
+    flex-direction: row;
+}
+
+#left-pane {
+    border-right: 1px solid black;
+}
+
+.outline {
+    display: flex;
+    flex-direction: column;
+}
+
 .bracket-view-canvas-container {
     /* Set a minimum size so that a new stage with no fixtures still has some area that can be clicked on to add new fixtures */
     min-width: 200px;

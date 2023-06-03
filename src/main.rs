@@ -1,6 +1,5 @@
 use std::{cell::RefCell, ops::DerefMut};
 
-use dom::create_html_element;
 use ui::bracket_view::BracketView;
 use ui::match_list::MatchList;
 use model::Model;
@@ -45,47 +44,33 @@ pub fn with_globals<F: FnOnce(&mut Model, &mut Ui) -> ()>(f: F) {
     });
 }
 
+fn add_ui_element(ui: &mut Ui, ui_element: UiElement, insertion_selector: &str) {
+    window().expect("Missing window")
+        .document().expect("Missing document")
+        .query_selector(insertion_selector).expect("Selector failed").expect("Selector failed")
+        .append_child(ui_element.get_root_html_element()).expect("Failed to add child");
+    ui.add_element(ui_element);
+}
+
 fn main() {
     console_error_panic_hook::set_once();
     console_log::init_with_level(log::Level::Debug).expect("Failed to init logging");
 
     with_globals(|model, ui| {
-        // let tournament_id = match model.get_tournaments().iter().find(|t| t.1.name == "LCS") {
-        //     Some((tid, _)) => *tid,
-        //     None => model.add_tournament("LCS".to_string()),
-        // };
-        // let stage_id = match model.get_tournament(tournament_id).unwrap().stages.iter().find(|t| t.1.name == "Group Stage") {
-        //     Some((sid, _)) => *sid,
-        //     None => model.add_stage(tournament_id, "Group Stage".to_string()).unwrap(),
-        // };
-
         let outline = Outline::new(ui.get_next_id(), model);
-        window().expect("Missing window").document().expect("Missing document").body().expect("Missing body").append_child(&outline.get_div()).expect("Failed to add div");
         let outline_id = outline.get_id();
-        ui.add_element(UiElement::Outline(outline));
-
-        window().expect("Missing window").document().expect("Missing document").body().expect("Missing body").append_child(&create_html_element("hr")).expect("Failed to add element");
+        add_ui_element(ui, UiElement::Outline(outline), "#left-pane");
 
         let standings = RoundRobinStandings::new(ui.get_next_id(), model, outline_id);
-        window().expect("Missing window").document().expect("Missing document").body().expect("Missing body").append_child(&standings.get_dom_table()).expect("Failed to insert table");
-        ui.add_element(UiElement::RoundRobinStandings(standings));
-
-        window().expect("Missing window").document().expect("Missing document").body().expect("Missing body").append_child(&create_html_element("hr")).expect("Failed to add element");
+        add_ui_element(ui, UiElement::RoundRobinStandings(standings), "#right-pane");
 
         let table = RoundRobinTable::new(ui.get_next_id(), model, outline_id);
-        window().expect("Missing window").document().expect("Missing document").body().expect("Missing body").append_child(&table.get_dom_table()).expect("Failed to insert table");
-        ui.add_element(UiElement::RoundRobinTable(table));
-
-        window().expect("Missing window").document().expect("Missing document").body().expect("Missing body").append_child(&create_html_element("hr")).expect("Failed to add element");
+        add_ui_element(ui, UiElement::RoundRobinTable(table), "#right-pane");
 
         let match_list = MatchList::new(ui.get_next_id(), model, outline_id);
-        window().expect("Missing window").document().expect("Missing document").body().expect("Missing body").append_child(&match_list.get_dom_table()).expect("Failed to insert table");
-        ui.add_element(UiElement::MatchList(match_list));
-
-        window().expect("Missing window").document().expect("Missing document").body().expect("Missing body").append_child(&create_html_element("hr")).expect("Failed to add element");
+        add_ui_element(ui, UiElement::MatchList(match_list), "#right-pane");
 
         let match_list = BracketView::new(ui.get_next_id(), model, outline_id);
-        window().expect("Missing window").document().expect("Missing document").body().expect("Missing body").append_child(&match_list.get_dom_root()).expect("Failed to insert table");
-        ui.add_element(UiElement::BracketView(match_list));
+        add_ui_element(ui, UiElement::BracketView(match_list), "#right-pane");
     });
 }

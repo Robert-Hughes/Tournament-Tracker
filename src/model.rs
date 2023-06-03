@@ -274,6 +274,7 @@ impl Model {
     }
 
     pub fn set_fixture_input(&mut self, tournament_id: TournamentId, stage_id: StageId, fixture_id: FixtureId, input: FixtureInput, team: FixtureTeam) -> Result<(), ()> {
+        //TODO: if a match already exists for the fixture, does it need updating at all?
         if let Some(StageKind::Bracket { fixtures }) = self.tournaments.get_mut(&tournament_id).and_then(|t| t.stages.get_mut(&stage_id)).and_then(|s| Some(&mut s.kind)) {
             if let Some(f) = fixtures.get_mut(&fixture_id) {
                 match input {

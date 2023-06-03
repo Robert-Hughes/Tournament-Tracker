@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use log::{error, debug};
+use log::{error};
 use wasm_bindgen::{JsCast};
-use web_sys::{ResizeObserver, HtmlElement, HtmlDivElement, MouseEvent, HtmlButtonElement, DomRect, window, HtmlSelectElement, HtmlOptionElement, HtmlTemplateElement, Element, HtmlCanvasElement, CanvasRenderingContext2d};
+use web_sys::{ResizeObserver, HtmlElement, HtmlDivElement, MouseEvent, HtmlButtonElement, DomRect, window, HtmlTemplateElement, Element, HtmlCanvasElement, CanvasRenderingContext2d};
 
 use crate::{dom::{create_element}, model::tournament::{StageId, TournamentId, StageKind, FixtureId, FixtureTeam, Outcome, FixtureInput}, model::Model, ui::{UiElement, UiElementId, create_callback, EventList, Event}};
 
@@ -266,13 +266,13 @@ impl BracketView {
                     for (fid, f) in fixtures {
                         let get_start = |ft: &FixtureTeam| {
                             match ft {
-                                FixtureTeam::Linked { fixture_id: linked_fixture_id, outcome } => Some(self.get_fixture_outcome_handle_rect(*linked_fixture_id, *outcome)),
+                                FixtureTeam::Linked { fixture_id: linked_fixture_id, outcome } => self.get_fixture_outcome_handle_rect(*linked_fixture_id, *outcome),
                                 _ => None
                             }
                         };
 
                         if let Some(start) = get_start(&f.team_a) {
-                            let end = self.get_fixture_input_handle_rect(*fid, FixtureInput::TeamA);
+                            let end = self.get_fixture_input_handle_rect(*fid, FixtureInput::TeamA).expect("This fixture must exist as it's the one we're looking at");
                             self.canvas_context.begin_path();
                             self.canvas_context.move_to(start.right() as f64, start.top() + start.height() / 2 as f64);
                             self.canvas_context.line_to(end.left() as f64, end.top() + end.height() / 2 as f64);
@@ -280,7 +280,7 @@ impl BracketView {
                         }
 
                         if let Some(start) = get_start(&f.team_b) {
-                            let end = self.get_fixture_input_handle_rect(*fid, FixtureInput::TeamB);
+                            let end = self.get_fixture_input_handle_rect(*fid, FixtureInput::TeamB).expect("This fixture must exist as it's the one we're looking at");
                             self.canvas_context.begin_path();
                             self.canvas_context.move_to(start.right() as f64, start.top() + start.height() / 2 as f64);
                             self.canvas_context.line_to(end.left() as f64, end.top() + end.height() / 2 as f64);
@@ -295,39 +295,44 @@ impl BracketView {
                         None => connecting_line.dragging_end,
                         Some((end_fixture_id, end_fixture_input)) => {
                             let r = self.get_fixture_input_handle_rect(end_fixture_id, end_fixture_input);
-                            (r.left() as i32, (r.top() + r.height() * 0.5) as i32)
+                            match r {
+                                Some(r) => (r.left() as i32, (r.top() + r.height() * 0.5) as i32),
+                                None => connecting_line.dragging_end,
+                            }
                         }
                     };
 
-                    self.canvas_context.begin_path();
-                    self.canvas_context.move_to(start.right() as f64, start.top() + start.height() / 2 as f64);
-                    self.canvas_context.line_to(end.0 as f64, end.1 as f64);
-                    self.canvas_context.stroke();
+                    if let Some(start) = start {
+                        self.canvas_context.begin_path();
+                        self.canvas_context.move_to(start.right() as f64, start.top() + start.height() / 2 as f64);
+                        self.canvas_context.line_to(end.0 as f64, end.1 as f64);
+                        self.canvas_context.stroke();
+                    }
                 }
             }
         }
     }
 
-    fn get_fixture_element_rect(&self, fixture_id: FixtureId, element_name: &str) -> DomRect {
+    fn get_fixture_element_rect(&self, fixture_id: FixtureId, element_name: &str) -> Option<DomRect> {
         let canvas_rect = self.canvas_container.get_bounding_client_rect();
         if let Some(fixture_div) = self.fixture_divs.get(&fixture_id) {
             let element = fixture_div.query_selector(&format!("[name={element_name}]")).expect("Missing entry").expect("Missing entry");
             let client_rect = element.get_bounding_client_rect();
-            DomRect::new_with_x_and_y_and_width_and_height(client_rect.x() - canvas_rect.x(),
-                client_rect.y() - canvas_rect.y(), client_rect.width(), client_rect.height()).expect("Failed to make DomRect")
+            Some(DomRect::new_with_x_and_y_and_width_and_height(client_rect.x() - canvas_rect.x(),
+                client_rect.y() - canvas_rect.y(), client_rect.width(), client_rect.height()).expect("Failed to make DomRect"))
         } else {
-            DomRect::new().expect("Failed to make DomRect")
+            None
         }
     }
 
-    fn get_fixture_input_handle_rect(&self, fixture_id: FixtureId, input: FixtureInput) -> DomRect {
+    fn get_fixture_input_handle_rect(&self, fixture_id: FixtureId, input: FixtureInput) -> Option<DomRect> {
         let element_name = match input {
             FixtureInput::TeamA => "team-a",
             FixtureInput::TeamB => "team-b",
         };
         self.get_fixture_element_rect(fixture_id, element_name)
     }
-    fn get_fixture_outcome_handle_rect(&self, fixture_id: FixtureId, outcome: Outcome) -> DomRect {
+    fn get_fixture_outcome_handle_rect(&self, fixture_id: FixtureId, outcome: Outcome) -> Option<DomRect> {
         let element_name = match outcome {
             Outcome::Winner => "winner-handle",
             Outcome::Loser => "loser-handle",
@@ -387,24 +392,24 @@ impl BracketView {
         }
     }
 
-    fn on_fixture_drag_handle_mousedown(&mut self, model: &mut Model, fixture_id: FixtureId, e: MouseEvent) {
+    fn on_fixture_drag_handle_mousedown(&mut self, _model: &mut Model, fixture_id: FixtureId, e: MouseEvent) {
         if let Some(fixture_div) = self.fixture_divs.get(&fixture_id) {
             let fixture_div_rect = fixture_div.get_bounding_client_rect();
             self.current_drag = Some(DragInfo { fixture_id, start_offset: (e.client_x() as f64 - fixture_div_rect.left(), e.client_y() as f64 - fixture_div_rect.top()) });
         }
     }
 
-    fn on_fixture_outcome_handle_mousedown(&mut self, model: &mut Model, fixture_id: FixtureId, outcome: Outcome) {
+    fn on_fixture_outcome_handle_mousedown(&mut self, _model: &mut Model, fixture_id: FixtureId, outcome: Outcome) {
         self.current_connecting_line = Some(ConnectingLine { start_fixture_id: fixture_id, start_outcome: outcome, dragging_end: (0, 0), end_fixture_input: None });
     }
 
-    fn on_fixture_input_mouseenter(&mut self, model: &mut Model, fixture_id: FixtureId, input: FixtureInput) {
+    fn on_fixture_input_mouseenter(&mut self, _model: &mut Model, fixture_id: FixtureId, input: FixtureInput) {
         if let Some(connecting_line) = self.current_connecting_line.as_mut() {
             connecting_line.end_fixture_input = Some((fixture_id, input));
         }
     }
 
-    fn on_fixture_input_mouseleave(&mut self, model: &mut Model, fixture_id: FixtureId, input: FixtureInput) {
+    fn on_fixture_input_mouseleave(&mut self, _model: &mut Model, _fixture_id: FixtureId, _input: FixtureInput) {
         if let Some(connecting_line) = self.current_connecting_line.as_mut() {
             connecting_line.end_fixture_input = None;
         }
@@ -442,22 +447,23 @@ impl BracketView {
         if let (Some(tournament_id), Some(stage_id)) = (self.tournament_id, self.stage_id) {
             if let Some(drag_info) = &self.current_drag {
                 let fixture_id = drag_info.fixture_id;
-                if let Some(fixture_div) = self.fixture_divs.get(&fixture_id) {
-                    let canvas_rect = self.canvas_container.get_bounding_client_rect();
-                    let x = e.client_x() as f64 - canvas_rect.left() - drag_info.start_offset.0;
-                    let y = e.client_y() as f64 - canvas_rect.top() - drag_info.start_offset.1;
+                let canvas_rect = self.canvas_container.get_bounding_client_rect();
+                let x = e.client_x() as f64 - canvas_rect.left() - drag_info.start_offset.0;
+                let y = e.client_y() as f64 - canvas_rect.top() - drag_info.start_offset.1;
 
-                    self.current_drag = None;
-                    if let Err(_) = model.set_fixture_layout(tournament_id, stage_id, fixture_id, (x as i32, y as i32)) {
-                        error!("Failed to update fixture");
-                    }
+                self.current_drag = None;
+                if let Err(_) = model.set_fixture_layout(tournament_id, stage_id, fixture_id, (x as i32, y as i32)) {
+                    error!("Failed to update fixture");
                 }
             }
 
             if let Some(connecting_line) = self.current_connecting_line.as_mut() {
                 if let Some((end_fixture_id, end_fixture_input)) = connecting_line.end_fixture_input {
-                    model.set_fixture_input(tournament_id, stage_id, end_fixture_id, end_fixture_input,
-                        FixtureTeam::Linked { fixture_id: connecting_line.start_fixture_id, outcome: connecting_line.start_outcome });
+                    if let Err(_) = model.set_fixture_input(tournament_id, stage_id, end_fixture_id, end_fixture_input,
+                        FixtureTeam::Linked { fixture_id: connecting_line.start_fixture_id, outcome: connecting_line.start_outcome })
+                    {
+                        error!("Failed to update fixture");
+                    }
                 }
 
                 self.current_connecting_line = None;
