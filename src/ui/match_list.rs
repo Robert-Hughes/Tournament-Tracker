@@ -13,8 +13,6 @@ pub struct MatchList {
     linked_outline_id: UiElementId,
 
     dom_table: HtmlTableElement,
-    #[allow(unused)]
-    head_row: HtmlTableRowElement,
     body: HtmlTableSectionElement,
 
     closures: Vec<Closure::<dyn FnMut()>>,
@@ -53,10 +51,12 @@ impl MatchList {
 
         let head: HtmlTableSectionElement = dom_table.create_t_head().dyn_into().expect("Cast failed");
         let head_row: HtmlTableRowElement = head.insert_row().expect("Failed to insert row").dyn_into().expect("Cast failed");
+        head_row.set_inner_html(r#"<th colspan="3"><h3>Matches</h3></th>"#);
+
 
         let body: HtmlTableSectionElement = dom_table.create_t_body().dyn_into().expect("Cast failed");
 
-        let mut result = MatchList { id, tournament_id: None, stage_id: None, linked_outline_id, dom_table, head_row, body, closures: vec![] };
+        let mut result = MatchList { id, tournament_id: None, stage_id: None, linked_outline_id, dom_table, body, closures: vec![] };
 
         result.refresh(model);
 
@@ -100,8 +100,8 @@ impl MatchList {
         self.closures.push(click_closure); // Needs to be kept alive
 
         //TODO: drag and drop
+        let cell = new_row.insert_cell().expect("Failed to insert cell");
         if idx > 0 {
-            let cell = new_row.insert_cell().expect("Failed to insert cell");
             let move_up_button: HtmlButtonElement = create_element("button");
             move_up_button.set_inner_text("^");
             cell.append_child(&move_up_button).expect("Failed to append button");
@@ -116,8 +116,8 @@ impl MatchList {
             self.closures.push(click_closure); // Needs to be kept alive
         }
 
+        let cell = new_row.insert_cell().expect("Failed to insert cell");
         if idx < stage.matches.len() - 1 {
-            let cell = new_row.insert_cell().expect("Failed to insert cell");
             let move_down_button: HtmlButtonElement = create_element("button");
             move_down_button.set_inner_text("v");
             cell.append_child(&move_down_button).expect("Failed to append button");

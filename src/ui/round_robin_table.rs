@@ -56,6 +56,10 @@ impl RoundRobinTable {
         let dom_table = create_element::<HtmlTableElement>("table");
 
         let head: HtmlTableSectionElement = dom_table.create_t_head().dyn_into().expect("Cast failed");
+
+        let head_row: HtmlTableRowElement = head.insert_row().expect("Failed to insert row").dyn_into().expect("Cast failed");
+        head_row.set_inner_html(r#"<th colspan="3"><h3>Table</h3></th>"#);
+
         let head_row: HtmlTableRowElement = head.insert_row().expect("Failed to insert row").dyn_into().expect("Cast failed");
         let cell = head_row.insert_cell().expect("Failed to insert cell");
         cell.set_inner_text("");

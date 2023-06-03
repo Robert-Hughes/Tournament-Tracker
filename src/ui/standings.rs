@@ -2,7 +2,7 @@ use log::{error};
 use wasm_bindgen::{JsCast, prelude::Closure};
 use web_sys::{HtmlTableElement, HtmlTableRowElement, HtmlElement, HtmlTableSectionElement, HtmlButtonElement, window};
 
-use crate::{dom::{create_element, create_html_element}, model::tournament::{StageId, TournamentId, TeamId, Stage, Team, StageKind}, model::Model, ui::{create_callback, UiElementId, UiElement, Event, EventList}};
+use crate::{dom::{create_element, create_html_element}, model::tournament::{StageId, TournamentId, TeamId, Stage, Team}, model::Model, ui::{create_callback, UiElementId, UiElement, Event, EventList}};
 
 
 //TODO: show total games played too
@@ -10,7 +10,7 @@ use crate::{dom::{create_element, create_html_element}, model::tournament::{Stag
 //TODO: show 'trend' e.g. last 5 game score, or full list of 'WLLWLLWL'. Maybe show which teams against too?
 //TODO: rename teams
 
-pub struct RoundRobinStandings {
+pub struct Standings {
     id: UiElementId,
     tournament_id: Option<TournamentId>,
     stage_id: Option<StageId>,
@@ -23,7 +23,7 @@ pub struct RoundRobinStandings {
     closures: Vec<Closure::<dyn FnMut()>>,
 }
 
-impl RoundRobinStandings {
+impl Standings {
     pub fn get_id(&self) -> UiElementId {
         self.id
     }
@@ -51,15 +51,13 @@ impl RoundRobinStandings {
         &self.dom_table
     }
 
-    pub fn new(id: UiElementId, model: &Model, linked_outline_id: UiElementId) -> RoundRobinStandings {
+    pub fn new(id: UiElementId, model: &Model, linked_outline_id: UiElementId) -> Standings {
         let dom_table = create_element::<HtmlTableElement>("table");
+        dom_table.set_class_name("standings");
 
         let head: HtmlTableSectionElement = dom_table.create_t_head().dyn_into().expect("Cast failed");
         let head_row: HtmlTableRowElement = head.insert_row().expect("Failed to insert row").dyn_into().expect("Cast failed");
-        let cell = head_row.insert_cell().expect("Failed to insert cell");
-        cell.set_inner_text("Team:");
-        let cell = head_row.insert_cell().expect("Failed to insert cell");
-        cell.set_inner_text("Score:");
+        head_row.set_inner_html(r#"<th colspan="3"><h3>Standings</h3></th>"#);
 
         let body: HtmlTableSectionElement = dom_table.create_t_body().dyn_into().expect("Cast failed");
 
@@ -73,10 +71,10 @@ impl RoundRobinStandings {
         add_team_button.set_inner_text("Add team");
         cell.append_child(&add_team_button).expect("Failed to append child");
 
-        let mut result = RoundRobinStandings { id, tournament_id: None, stage_id: None, linked_outline_id, dom_table, head_row, body, closures: vec![] };
+        let mut result = Standings { id, tournament_id: None, stage_id: None, linked_outline_id, dom_table, head_row, body, closures: vec![] };
 
         let click_closure = create_callback(move |model, ui| {
-            if let Some(UiElement::RoundRobinStandings(this)) = ui.get_element(id) {
+            if let Some(UiElement::Standings(this)) = ui.get_element(id) {
                 this.on_add_team_button_click(model);
             }
         });
@@ -92,10 +90,8 @@ impl RoundRobinStandings {
     fn refresh(&mut self, model: &Model) {
         let mut show = false;
         if let (Some(tournament_id), Some(stage_id)) = (self.tournament_id, self.stage_id) {
-            if let Some(s) = model.get_stage(tournament_id, stage_id) {
-                if let StageKind::RoundRobin { .. } = s.kind {
-                    show = true;
-                }
+            if model.get_stage(tournament_id, stage_id).is_some() {
+                show = true;
             }
         }
         self.dom_table.style().set_property("display",
@@ -146,7 +142,7 @@ impl RoundRobinStandings {
         let id = self.id;
         let team_name2 = team_name.to_string();
         let click_closure = create_callback(move |model, ui| {
-            if let Some(UiElement::RoundRobinStandings(this)) = ui.get_element(id) {
+            if let Some(UiElement::Standings(this)) = ui.get_element(id) {
                 this.on_delete_team_button_click(model, team_id, &team_name2);
             }
         });

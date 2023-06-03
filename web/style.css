@@ -8,17 +8,21 @@ body {
     border-right: 1px solid black;
 }
 
+#right-pane {
+    flex-grow: 1;
+}
+
 .outline {
     display: flex;
     flex-direction: column;
 }
 
 .bracket-view-canvas-container {
-    /* Set a minimum size so that a new stage with no fixtures still has some area that can be clicked on to add new fixtures */
-    min-width: 200px;
-    min-height: 200px;
+    width: 100%;
+    height: 500px;
     background-color: lightgray;
     user-select: none; /* Prevent weird selections when dragging fixtures */
+    overflow: hidden;
 }
 
 .bracket-view-canvas {

@@ -1,4 +1,4 @@
-use log::{error, debug};
+use log::{error};
 use wasm_bindgen::{JsCast, prelude::Closure};
 use web_sys::{HtmlElement, HtmlSelectElement, HtmlDivElement, HtmlOptionElement, window};
 
@@ -103,6 +103,7 @@ impl Outline {
         rename_button.set_onclick(Some(click_closure.as_ref().unchecked_ref()));
         result.closures.push(click_closure); // Needs to be kept alive
 
+        //TODO: not working properly for keyboard changes - seems to lag behind by one change
         let change_closure = create_callback(move |_model, ui| {
             if let Some(UiElement::Outline(this)) = ui.get_element_mut(id) {
                 this.on_select_change();
@@ -184,7 +185,6 @@ impl Outline {
                 error!("Multi-select should not be possible!");
             }
         }
-        debug!("{:?} {:?}", self.selected_tournament_id, self.selected_stage_id);
         self.selection_change_event_pending = true;
     }
 

@@ -4,7 +4,7 @@ use ui::bracket_view::BracketView;
 use ui::match_list::MatchList;
 use model::Model;
 use ui::outline::Outline;
-use ui::round_robin_standings::RoundRobinStandings;
+use ui::standings::Standings;
 use ui::round_robin_table::RoundRobinTable;
 use ui::{Ui, UiElement};
 use web_sys::{window};
@@ -61,16 +61,16 @@ fn main() {
         let outline_id = outline.get_id();
         add_ui_element(ui, UiElement::Outline(outline), "#left-pane");
 
-        let standings = RoundRobinStandings::new(ui.get_next_id(), model, outline_id);
-        add_ui_element(ui, UiElement::RoundRobinStandings(standings), "#right-pane");
+        let match_list = BracketView::new(ui.get_next_id(), model, outline_id);
+        add_ui_element(ui, UiElement::BracketView(match_list), "#right-pane");
+
+        let standings = Standings::new(ui.get_next_id(), model, outline_id);
+        add_ui_element(ui, UiElement::Standings(standings), "#right-pane");
 
         let table = RoundRobinTable::new(ui.get_next_id(), model, outline_id);
         add_ui_element(ui, UiElement::RoundRobinTable(table), "#right-pane");
 
         let match_list = MatchList::new(ui.get_next_id(), model, outline_id);
         add_ui_element(ui, UiElement::MatchList(match_list), "#right-pane");
-
-        let match_list = BracketView::new(ui.get_next_id(), model, outline_id);
-        add_ui_element(ui, UiElement::BracketView(match_list), "#right-pane");
     });
 }

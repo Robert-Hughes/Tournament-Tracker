@@ -69,7 +69,7 @@ impl BracketView {
 
     pub fn new(id: UiElementId, model: &Model, linked_outline_id: UiElementId) -> BracketView {
         let dom_root = create_element::<HtmlElement>("div");
-        dom_root.set_inner_text("Bracket view!");
+        dom_root.set_inner_html("<h3>Bracket</h3>");
 
         let canvas_container = create_element::<HtmlDivElement>("div");
         canvas_container.set_class_name("bracket-view-canvas-container");
